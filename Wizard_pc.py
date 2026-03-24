@@ -619,27 +619,27 @@ def generate_bundles(df, branch_col, cat_col, price_min, price_max):
     modes = [
         {
             "key": "stok_terbanyak",
-            "label": "📦 Stok Terbanyak",
+            "label": "Stok Terbanyak",
             "desc": "Produk dengan stok terbanyak dari setiap kategori",
             "badge": "badge-stock",
             "variants": ["#1 Stok Tertinggi", "#2 Stok Tinggi", "#3 Stok Cukup"],
-            "icons": ["📦", "📦", "📦"],
+            "icons": ["", "", ""],
         },
         {
             "key": "harga_termurah",
-            "label": "💰 Harga Termurah",
+            "label": "Harga Termurah",
             "desc": "Produk dengan harga termurah dari setiap kategori",
             "badge": "badge-price",
             "variants": ["#1 Termurah", "#2 Budget", "#3 Ekonomis"],
-            "icons": ["💰", "💰", "💰"],
+            "icons": ["", "", ""],
         },
         {
             "key": "smart_pick",
-            "label": "🧠 Smart Pick",
-            "desc": "Harga termurah + range 100rb → stok terbanyak dalam range",
+            "label": "Smart Pick",
+            "desc": "Harga termurah + range 100rb — stok terbanyak dalam range",
             "badge": "badge-smart",
             "variants": ["#1 Smart", "#2 Smart", "#3 Smart"],
-            "icons": ["🧠", "🧠", "🧠"],
+            "icons": ["", "", ""],
         },
     ]
 
@@ -666,7 +666,7 @@ def generate_bundles(df, branch_col, cat_col, price_min, price_max):
 # MAIN APP
 # ============================================================
 
-st.title("🖥️ PC Wizard Pro")
+st.title("PC Wizard Pro")
 st.caption("Sistem Rekomendasi Bundling PC Otomatis")
 
 if 'view' not in st.session_state:
@@ -674,7 +674,7 @@ if 'view' not in st.session_state:
 if 'selected_bundle' not in st.session_state:
     st.session_state.selected_bundle = None
 
-uploaded_file = st.file_uploader("📂 Upload Data Portal (CSV atau XLSX)", type=["csv", "xlsx"])
+uploaded_file = st.file_uploader("Upload Data Portal (CSV atau XLSX)", type=["csv", "xlsx"])
 
 if uploaded_file:
     with st.spinner("Memproses data..."):
@@ -684,7 +684,7 @@ if uploaded_file:
     # --------------------------------------------------------
     # SIDEBAR
     # --------------------------------------------------------
-    st.sidebar.header("⚙️ Konfigurasi")
+    st.sidebar.header("Konfigurasi")
 
     branch_map = {
         "ITC":         "Stock A - ITC",
@@ -709,9 +709,9 @@ if uploaded_file:
         "Kategori Penggunaan",
         list(usage_options.keys()),
         format_func=lambda x: {
-            "Office":  "🏢 Office (< 10 jt)",
-            "Standar": "🎮 Standar (10 - 20 jt)",
-            "Advance": "🚀 Advance (> 20 jt)"
+            "Office":  "Office (< 10 jt)",
+            "Standar": "Standar (10 - 20 jt)",
+            "Advance": "Advance (> 20 jt)"
         }[x]
     )
     cat_col = usage_options[usage_label]
@@ -728,7 +728,7 @@ if uploaded_file:
         min_sum, max_sum = 0, 100_000_000
 
     st.sidebar.divider()
-    st.sidebar.caption(f"💡 Estimasi sistem: Rp{min_sum:,.0f} – Rp{max_sum:,.0f}")
+    st.sidebar.caption(f"Estimasi sistem: Rp{min_sum:,.0f} – Rp{max_sum:,.0f}")
     price_min = st.sidebar.number_input("Harga Min (Rp)", min_value=0, value=int(min_sum), step=500_000)
     price_max = st.sidebar.number_input("Harga Max (Rp)", min_value=0, value=int(max_sum), step=500_000)
 
@@ -736,13 +736,13 @@ if uploaded_file:
     # VIEW: MAIN (9 card: 3 mode x 3 variasi)
     # --------------------------------------------------------
     if st.session_state.view == 'main':
-        st.subheader(f"✨ Rekomendasi Bundling — {usage_label} | {selected_branch}")
+        st.subheader(f"Rekomendasi Bundling — {usage_label} | {selected_branch}")
 
         grouped = generate_bundles(data, branch_col, cat_col, price_min, price_max)
 
         any_card = any(len(g["cards"]) > 0 for g in grouped)
         if not any_card:
-            st.warning("⚠️ Tidak ada bundling yang bisa dibuat. Pastikan data sudah diupload dan filter sesuai.")
+            st.warning("Tidak ada bundling yang bisa dibuat. Pastikan data sudah diupload dan filter sesuai.")
 
         btn_counter = 0
         for group in grouped:
@@ -764,12 +764,11 @@ if uploaded_file:
                     # Warna border berbeda jika di luar range harga
                     border_color = "#e0e0e0" if card["in_range"] else "#ffcdd2"
                     opacity = "1" if card["in_range"] else "0.65"
-                    out_of_range_note = "" if card["in_range"] else '<div style="font-size:11px;color:#e53935;margin-top:4px;">⚠️ Di luar rentang harga</div>'
+                    out_of_range_note = "" if card["in_range"] else '<div style="font-size:11px;color:#e53935;margin-top:4px;">Di luar rentang harga</div>'
 
                     st.markdown(f"""
                     <div class="bundle-card" style="border-color:{border_color}; opacity:{opacity};">
                         <span class="badge {card['badge']}">{card['name']}</span>
-                        <div style="font-size:24px; margin: 4px 0;">{card['icon']}</div>
                         <div class="price-text">Rp {card['total']:,.0f}</div>
                         <div style="font-size:11px; color:#888;">{len(card['parts'])} komponen</div>
                         {out_of_range_note}
@@ -781,7 +780,6 @@ if uploaded_file:
                             "name": f"{group['label']} — {card['name']}",
                             "parts": dict(card["parts"]),
                             "total": card["total"],
-                            "icon": card["icon"]
                         }
                         st.session_state.view = 'detail'
                         st.rerun()
@@ -790,15 +788,15 @@ if uploaded_file:
             st.markdown("<hr style='border:none;border-top:1px solid #f0f0f0;margin:8px 0 4px 0;'>", unsafe_allow_html=True)
 
         # Info produk yang diexclude
-        with st.expander("ℹ️ Info Filter Produk Aktif"):
+        with st.expander("Info Filter Produk Aktif"):
             st.markdown("""
-            - ❌ **Processor**: Hanya Intel (AMD sebagai fallback)
-            - ❌ **RAM**: Produk SODIMM dihapus
-            - ❌ **SSD**: Produk WDS120G2GOB dihapus
-            - ❌ **Casing**: Produk Armageddon dihapus
-            - 🔁 **VGA**: Muncul hanya jika Processor tipe F
-            - 🔁 **PSU**: Dihapus jika Casing sudah include PSU/VALCAS
-            - 🔁 **CPU Cooler**: Muncul hanya jika Processor tipe Tray
+            - **Processor**: Hanya Intel (AMD sebagai fallback)
+            - **RAM**: Produk SODIMM dihapus
+            - **SSD**: Produk WDS120G2GOB dihapus
+            - **Casing**: Produk Armageddon dihapus
+            - **VGA**: Muncul hanya jika Processor tipe F
+            - **PSU**: Dihapus jika Casing sudah include PSU/VALCAS
+            - **CPU Cooler**: Muncul hanya jika Processor tipe Tray
             """)
 
     # --------------------------------------------------------
@@ -809,11 +807,11 @@ if uploaded_file:
 
         col_back, col_title = st.columns([1, 8])
         with col_back:
-            if st.button("⬅️ Kembali"):
+            if st.button("Kembali"):
                 st.session_state.view = 'main'
                 st.rerun()
         with col_title:
-            st.subheader(f"{bundle['icon']} {bundle['name']}")
+            st.subheader(bundle['name'])
 
         st.divider()
 
@@ -822,8 +820,8 @@ if uploaded_file:
         display_order = ['Processor', 'Motherboard', 'Memory RAM', 'SSD Internal', 'VGA', 'Casing PC', 'Power Supply', 'CPU Cooler']
 
         with col_parts:
-            st.markdown("#### 🔧 Komponen Terpilih")
-            st.caption("Klik tombol ➖ untuk menghapus komponen dari bundling")
+            st.markdown("#### Komponen Terpilih")
+            st.caption("Klik tombol  —  untuk menghapus komponen dari bundling")
             updated_parts = {}
             for cat in display_order:
                 if cat in bundle['parts']:
@@ -841,14 +839,14 @@ if uploaded_file:
                         """, unsafe_allow_html=True)
                     with c2:
                         st.write("")
-                        if not st.button("➖", key=f"del_{cat}", help=f"Hapus {cat}"):
+                        if not st.button("—", key=f"del_{cat}", help=f"Hapus {cat}"):
                             updated_parts[cat] = item
             st.session_state.selected_bundle['parts'] = updated_parts
 
         with col_summary:
             total_items = sum(item['Web'] for item in updated_parts.values())
             is_assembled = st.checkbox(
-                f"✅ Jasa Rakit",
+                f"Tambah Jasa Rakit",
                 value=False,
                 help=f"Biaya jasa rakit {usage_label}: Rp {assembly_fee:,.0f}"
             )
@@ -856,7 +854,7 @@ if uploaded_file:
 
             st.markdown(f"""
             <div class="summary-box">
-                <div style="font-size:13px; opacity:0.85; margin-bottom:6px;">🧾 RINGKASAN</div>
+                <div style="font-size:13px; opacity:0.85; margin-bottom:6px;">RINGKASAN</div>
                 {"".join(f'<div style="font-size:12px; margin:3px 0; opacity:0.9;">• {item["Nama Accurate"][:30]}...</div>' for item in updated_parts.values())}
                 {"<div style='font-size:12px; margin:3px 0; opacity:0.9;'>• Jasa Rakit " + usage_label + "</div>" if is_assembled else ""}
                 <hr style="border-color: rgba(255,255,255,0.3); margin:10px 0;">
@@ -866,6 +864,6 @@ if uploaded_file:
             """, unsafe_allow_html=True)
 
             st.write("")
-            if st.button("✅ Konfirmasi Bundling", use_container_width=True, type="primary"):
+            if st.button("Konfirmasi Bundling", use_container_width=True, type="primary"):
                 st.balloons()
                 st.success(f"Bundle dikonfirmasi! Total: Rp {grand_total:,.0f}")
