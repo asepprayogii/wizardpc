@@ -720,9 +720,17 @@ if uploaded_file:
     assembly_map = {"Office": 100_000, "Standar": 150_000, "Advance": 200_000}
     assembly_fee = assembly_map[usage_label]
 
+    # Range harga otomatis sesuai aturan wizard
+    price_range_map = {
+        "Office":  (0,          10_000_000),
+        "Standar": (10_000_000, 20_000_000),
+        "Advance": (20_000_000, 100_000_000),
+    }
+    default_min, default_max = price_range_map[usage_label]
+
     st.sidebar.divider()
-    price_min = st.sidebar.number_input("Harga Min (Rp)", min_value=0, value=0, step=500_000)
-    price_max = st.sidebar.number_input("Harga Max (Rp)", min_value=0, value=0, step=500_000)
+    price_min = st.sidebar.number_input("Harga Min (Rp)", min_value=0, value=default_min, step=500_000)
+    price_max = st.sidebar.number_input("Harga Max (Rp)", min_value=0, value=default_max, step=500_000)
 
     # --------------------------------------------------------
     # VIEW: MAIN (9 card: 3 mode x 3 variasi)
