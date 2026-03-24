@@ -609,12 +609,14 @@ def build_bundle(available, branch_col, mode, variant_idx):
     return {"parts": bundle, "total": total}
 
 
-def generate_bundles(df, branch_col, cat_col):
+def generate_bundles(df, branch_col, cat_col, price_min=0, price_max=0):
     """
     Generate 9 bundle: 3 mode x 3 variasi (pilihan ke-1/2/3 dari ranking).
     Hasil dikelompokkan per mode agar bisa ditampilkan per baris.
+    Jika price_min dan price_max keduanya 0, filter harga diabaikan.
     """
     available = df[(df[branch_col] > 0) & (df[cat_col] == True)].copy()
+    use_price_filter = not (price_min == 0 and price_max == 0)
 
     modes = [
         {
@@ -646,9 +648,13 @@ def generate_bundles(df, branch_col, cat_col):
         for v_idx in range(3):
             bundle = build_bundle(available, branch_col, m["key"], v_idx)
             if bundle:
+                in_range = True
+                if use_price_filter:
+                    in_range = price_min <= bundle["total"] <= price_max
                 card = {
                     "name": m["variants"][v_idx],
                     "badge": m["badge"],
+                    "in_range": in_range,
                     **bundle
                 }
                 group["cards"].append(card)
@@ -714,13 +720,17 @@ if uploaded_file:
     assembly_map = {"Office": 100_000, "Standar": 150_000, "Advance": 200_000}
     assembly_fee = assembly_map[usage_label]
 
+    st.sidebar.divider()
+    price_min = st.sidebar.number_input("Harga Min (Rp)", min_value=0, value=0, step=500_000)
+    price_max = st.sidebar.number_input("Harga Max (Rp)", min_value=0, value=0, step=500_000)
+
     # --------------------------------------------------------
     # VIEW: MAIN (9 card: 3 mode x 3 variasi)
     # --------------------------------------------------------
     if st.session_state.view == 'main':
         st.subheader(f"Rekomendasi Bundling — {usage_label} | {selected_branch}")
 
-        grouped = generate_bundles(data, branch_col, cat_col)
+        grouped = generate_bundles(data, branch_col, cat_col, price_min, price_max)
 
         any_card = any(len(g["cards"]) > 0 for g in grouped)
         if not any_card:
@@ -743,11 +753,15 @@ if uploaded_file:
             cols = st.columns(3)
             for j, card in enumerate(cards):
                 with cols[j]:
+                    border_color = "#e0e0e0" if card["in_range"] else "#ffcdd2"
+                    opacity = "1" if card["in_range"] else "0.65"
+                    out_of_range_note = "" if card["in_range"] else '<div style="font-size:11px;color:#e53935;margin-top:4px;">Di luar rentang harga</div>'
                     st.markdown(f"""
-                    <div class="bundle-card">
+                    <div class="bundle-card" style="border-color:{border_color}; opacity:{opacity};">
                         <span class="badge {card['badge']}">{card['name']}</span>
                         <div class="price-text">Rp {card['total']:,.0f}</div>
                         <div style="font-size:11px; color:#888;">{len(card['parts'])} komponen</div>
+                        {out_of_range_note}
                     </div>
                     """, unsafe_allow_html=True)
 
