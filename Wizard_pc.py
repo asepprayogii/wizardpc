@@ -609,7 +609,7 @@ def build_bundle(available, branch_col, mode, variant_idx):
     return {"parts": bundle, "total": total}
 
 
-def generate_bundles(df, branch_col, cat_col, price_min, price_max):
+def generate_bundles(df, branch_col, cat_col):
     """
     Generate 9 bundle: 3 mode x 3 variasi (pilihan ke-1/2/3 dari ranking).
     Hasil dikelompokkan per mode agar bisa ditampilkan per baris.
@@ -623,7 +623,6 @@ def generate_bundles(df, branch_col, cat_col, price_min, price_max):
             "desc": "Produk dengan stok terbanyak dari setiap kategori",
             "badge": "badge-stock",
             "variants": ["#1 Stok Tertinggi", "#2 Stok Tinggi", "#3 Stok Cukup"],
-            "icons": ["", "", ""],
         },
         {
             "key": "harga_termurah",
@@ -631,7 +630,6 @@ def generate_bundles(df, branch_col, cat_col, price_min, price_max):
             "desc": "Produk dengan harga termurah dari setiap kategori",
             "badge": "badge-price",
             "variants": ["#1 Termurah", "#2 Budget", "#3 Ekonomis"],
-            "icons": ["", "", ""],
         },
         {
             "key": "smart_pick",
@@ -639,7 +637,6 @@ def generate_bundles(df, branch_col, cat_col, price_min, price_max):
             "desc": "Harga termurah + range 100rb — stok terbanyak dalam range",
             "badge": "badge-smart",
             "variants": ["#1 Smart", "#2 Smart", "#3 Smart"],
-            "icons": ["", "", ""],
         },
     ]
 
@@ -651,9 +648,7 @@ def generate_bundles(df, branch_col, cat_col, price_min, price_max):
             if bundle:
                 card = {
                     "name": m["variants"][v_idx],
-                    "icon": m["icons"][v_idx],
                     "badge": m["badge"],
-                    "in_range": price_min <= bundle["total"] <= price_max,
                     **bundle
                 }
                 group["cards"].append(card)
@@ -719,26 +714,13 @@ if uploaded_file:
     assembly_map = {"Office": 100_000, "Standar": 150_000, "Advance": 200_000}
     assembly_fee = assembly_map[usage_label]
 
-    # Range harga dinamis
-    relevant = data[(data[cat_col] == True) & (data[branch_col] > 0)]
-    if not relevant.empty:
-        min_sum = relevant.groupby('Kategori')['Web'].min().sum()
-        max_sum = relevant.groupby('Kategori')['Web'].max().sum()
-    else:
-        min_sum, max_sum = 0, 100_000_000
-
-    st.sidebar.divider()
-    st.sidebar.caption(f"Estimasi sistem: Rp{min_sum:,.0f} – Rp{max_sum:,.0f}")
-    price_min = st.sidebar.number_input("Harga Min (Rp)", min_value=0, value=int(min_sum), step=500_000)
-    price_max = st.sidebar.number_input("Harga Max (Rp)", min_value=0, value=int(max_sum), step=500_000)
-
     # --------------------------------------------------------
     # VIEW: MAIN (9 card: 3 mode x 3 variasi)
     # --------------------------------------------------------
     if st.session_state.view == 'main':
         st.subheader(f"Rekomendasi Bundling — {usage_label} | {selected_branch}")
 
-        grouped = generate_bundles(data, branch_col, cat_col, price_min, price_max)
+        grouped = generate_bundles(data, branch_col, cat_col)
 
         any_card = any(len(g["cards"]) > 0 for g in grouped)
         if not any_card:
@@ -761,17 +743,11 @@ if uploaded_file:
             cols = st.columns(3)
             for j, card in enumerate(cards):
                 with cols[j]:
-                    # Warna border berbeda jika di luar range harga
-                    border_color = "#e0e0e0" if card["in_range"] else "#ffcdd2"
-                    opacity = "1" if card["in_range"] else "0.65"
-                    out_of_range_note = "" if card["in_range"] else '<div style="font-size:11px;color:#e53935;margin-top:4px;">Di luar rentang harga</div>'
-
                     st.markdown(f"""
-                    <div class="bundle-card" style="border-color:{border_color}; opacity:{opacity};">
+                    <div class="bundle-card">
                         <span class="badge {card['badge']}">{card['name']}</span>
                         <div class="price-text">Rp {card['total']:,.0f}</div>
                         <div style="font-size:11px; color:#888;">{len(card['parts'])} komponen</div>
-                        {out_of_range_note}
                     </div>
                     """, unsafe_allow_html=True)
 
