@@ -501,92 +501,107 @@ def process_data(df):
 
 
 # ============================================================
-# FUNGSI BUNDLING (3 MODE SESUAI SPREADSHEET)
+# FUNGSI BUNDLING (3 MODE x 3 VARIASI = 9 CARD)
 # ============================================================
 
-def build_bundle(available, branch_col, cat_col, mode):
-    """
-    Buat 1 bundle berdasarkan mode:
-    - 'stok_terbanyak': pilih produk dengan stok terbanyak per kategori
-    - 'harga_termurah': pilih produk dengan harga termurah per kategori
-    - 'smart_pick': harga termurah + range 100rb -> stok terbanyak dalam range
-    """
-    bundle = {}
+def sorted_items(items, mode, branch_col):
+    """Urutkan items sesuai mode, return DataFrame terurut."""
+    if items.empty:
+        return items
+    if mode == 'stok_terbanyak':
+        return items.sort_values(branch_col, ascending=False)
+    elif mode == 'harga_termurah':
+        return items.sort_values('Web', ascending=True)
+    elif mode == 'smart_pick':
+        cheapest_price = items['Web'].min()
+        in_range = items[items['Web'] <= cheapest_price + 100_000]
+        return in_range.sort_values(branch_col, ascending=False)
+    return items
 
-    def pick(items, mode):
-        if items.empty:
+
+def build_bundle(available, branch_col, mode, variant_idx):
+    """
+    Buat 1 bundle berdasarkan mode dan variant_idx (0, 1, 2).
+
+    Setiap mode mengurutkan semua produk per kategori sesuai kriterianya,
+    lalu variant_idx menentukan pilihan ke-1, ke-2, atau ke-3 dari ranking tsb.
+    Jika produk kurang dari variant_idx+1, gunakan yang terakhir tersedia.
+
+    Mode:
+    - 'stok_terbanyak': urutkan stok terbesar (tanpa mempertimbangkan harga)
+    - 'harga_termurah' : urutkan harga terkecil (tanpa mempertimbangkan stok)
+    - 'smart_pick'     : dari rentang [harga_termurah .. harga_termurah+100rb],
+                         ambil stok terbanyak
+    """
+
+    def pick(items):
+        ranked = sorted_items(items, mode, branch_col)
+        if ranked.empty:
             return None
-        if mode == 'stok_terbanyak':
-            return items.sort_values(branch_col, ascending=False).iloc[0]
-        elif mode == 'harga_termurah':
-            return items.sort_values('Web', ascending=True).iloc[0]
-        elif mode == 'smart_pick':
-            cheapest_price = items['Web'].min()
-            in_range = items[items['Web'] <= cheapest_price + 100_000]
-            return in_range.sort_values(branch_col, ascending=False).iloc[0]
-        return items.iloc[0]
+        idx = min(variant_idx, len(ranked) - 1)
+        return ranked.iloc[idx]
+
+    bundle = {}
 
     # 1. Processor
     procs = available[available['Kategori'] == 'Processor']
-    proc = pick(procs, mode)
+    proc = pick(procs)
     if proc is None:
         return None
     bundle['Processor'] = proc
 
-    # 2. Motherboard (compatible dengan processor)
+    # 2. Motherboard — compatible dengan processor terpilih
     mobos = available[available['Kategori'] == 'Motherboard']
     cpu_info = {
         'brand': proc.get('cpu_brand', 'INTEL'),
-        'gen': proc.get('cpu_gen', None),
-        'socket': proc.get('cpu_socket', None),
+        'gen':   proc.get('cpu_gen', None),
+        'socket':proc.get('cpu_socket', None),
     }
     compatible_mobos = mobos[mobos['mobo_series'].apply(
         lambda s: is_mobo_compatible(cpu_info, s)
     )]
-    mobo = pick(compatible_mobos, mode)
+    mobo = pick(compatible_mobos)
     if mobo is None:
         return None
     bundle['Motherboard'] = mobo
 
     # 3. RAM
     rams = available[available['Kategori'] == 'Memory RAM']
-    ram = pick(rams, mode)
+    ram = pick(rams)
     if ram is not None:
         bundle['Memory RAM'] = ram
 
     # 4. SSD Internal
     ssds = available[available['Kategori'] == 'SSD Internal']
-    ssd = pick(ssds, mode)
+    ssd = pick(ssds)
     if ssd is not None:
         bundle['SSD Internal'] = ssd
 
-    # 5. VGA (kondisional: hanya jika processor tipe F)
+    # 5. VGA — kondisional: hanya jika processor tipe F
     if proc.get('need_vga', 0) == 1:
         vgas = available[available['Kategori'] == 'VGA']
-        vga = pick(vgas, mode)
+        vga = pick(vgas)
         if vga is not None:
             bundle['VGA'] = vga
 
     # 6. Casing PC
     casings = available[available['Kategori'] == 'Casing PC']
-    casing = pick(casings, mode)
+    casing = pick(casings)
     if casing is not None:
         bundle['Casing PC'] = casing
-    else:
-        casing = None
 
-    # 7. PSU (kondisional: skip jika casing sudah include PSU)
+    # 7. PSU — kondisional: skip jika casing sudah include PSU/VALCAS
     casing_has_psu = (casing is not None and casing.get('has_psu', 0) == 1)
     if not casing_has_psu:
         psus = available[available['Kategori'] == 'Power Supply']
-        psu = pick(psus, mode)
+        psu = pick(psus)
         if psu is not None:
             bundle['Power Supply'] = psu
 
-    # 8. CPU Cooler (kondisional: hanya jika processor tipe Tray)
+    # 8. CPU Cooler — kondisional: hanya jika processor tipe Tray
     if proc.get('need_cooler', 0) == 1:
         coolers = available[available['Kategori'] == 'CPU Cooler']
-        cooler = pick(coolers, mode)
+        cooler = pick(coolers)
         if cooler is not None:
             bundle['CPU Cooler'] = cooler
 
@@ -595,21 +610,56 @@ def build_bundle(available, branch_col, cat_col, mode):
 
 
 def generate_bundles(df, branch_col, cat_col, price_min, price_max):
-    """Generate 3 bundle sesuai 3 mode dari spreadsheet."""
+    """
+    Generate 9 bundle: 3 mode x 3 variasi (pilihan ke-1/2/3 dari ranking).
+    Hasil dikelompokkan per mode agar bisa ditampilkan per baris.
+    """
     available = df[(df[branch_col] > 0) & (df[cat_col] == True)].copy()
 
     modes = [
-        {"key": "stok_terbanyak", "name": "Stok Terbanyak", "desc": "Produk dengan stok paling banyak", "badge": "badge-stock", "tag": "BEST STOCK", "icon": "📦"},
-        {"key": "harga_termurah", "name": "Harga Termurah", "desc": "Produk dengan harga paling terjangkau", "badge": "badge-price", "tag": "BEST PRICE", "icon": "💰"},
-        {"key": "smart_pick",     "name": "Smart Pick",     "desc": "Harga termurah + stok terbaik dalam range 100rb", "badge": "badge-smart", "tag": "RECOMMENDED", "icon": "🧠"},
+        {
+            "key": "stok_terbanyak",
+            "label": "📦 Stok Terbanyak",
+            "desc": "Produk dengan stok terbanyak dari setiap kategori",
+            "badge": "badge-stock",
+            "variants": ["#1 Stok Tertinggi", "#2 Stok Tinggi", "#3 Stok Cukup"],
+            "icons": ["📦", "📦", "📦"],
+        },
+        {
+            "key": "harga_termurah",
+            "label": "💰 Harga Termurah",
+            "desc": "Produk dengan harga termurah dari setiap kategori",
+            "badge": "badge-price",
+            "variants": ["#1 Termurah", "#2 Budget", "#3 Ekonomis"],
+            "icons": ["💰", "💰", "💰"],
+        },
+        {
+            "key": "smart_pick",
+            "label": "🧠 Smart Pick",
+            "desc": "Harga termurah + range 100rb → stok terbanyak dalam range",
+            "badge": "badge-smart",
+            "variants": ["#1 Smart", "#2 Smart", "#3 Smart"],
+            "icons": ["🧠", "🧠", "🧠"],
+        },
     ]
 
-    results = []
+    grouped = []
     for m in modes:
-        bundle = build_bundle(available, branch_col, cat_col, m['key'])
-        if bundle and price_min <= bundle['total'] <= price_max:
-            results.append({**m, **bundle})
-    return results
+        group = {"label": m["label"], "desc": m["desc"], "badge": m["badge"], "cards": []}
+        for v_idx in range(3):
+            bundle = build_bundle(available, branch_col, m["key"], v_idx)
+            if bundle:
+                card = {
+                    "name": m["variants"][v_idx],
+                    "icon": m["icons"][v_idx],
+                    "badge": m["badge"],
+                    "in_range": price_min <= bundle["total"] <= price_max,
+                    **bundle
+                }
+                group["cards"].append(card)
+        grouped.append(group)
+
+    return grouped
 
 
 # ============================================================
@@ -683,39 +733,61 @@ if uploaded_file:
     price_max = st.sidebar.number_input("Harga Max (Rp)", min_value=0, value=int(max_sum), step=500_000)
 
     # --------------------------------------------------------
-    # VIEW: MAIN (daftar 3 bundle)
+    # VIEW: MAIN (9 card: 3 mode x 3 variasi)
     # --------------------------------------------------------
     if st.session_state.view == 'main':
         st.subheader(f"✨ Rekomendasi Bundling — {usage_label} | {selected_branch}")
 
-        bundles = generate_bundles(data, branch_col, cat_col, price_min, price_max)
+        grouped = generate_bundles(data, branch_col, cat_col, price_min, price_max)
 
-        if not bundles:
-            st.warning("⚠️ Tidak ada bundling yang sesuai dengan filter. Coba perluas rentang harga atau ganti cabang.")
-        else:
-            cols = st.columns(len(bundles))
-            for i, res in enumerate(bundles):
-                with cols[i]:
+        any_card = any(len(g["cards"]) > 0 for g in grouped)
+        if not any_card:
+            st.warning("⚠️ Tidak ada bundling yang bisa dibuat. Pastikan data sudah diupload dan filter sesuai.")
+
+        btn_counter = 0
+        for group in grouped:
+            st.markdown(f"""
+            <div style="margin: 20px 0 6px 0;">
+                <span style="font-size:17px; font-weight:700; color:#1a1a2e;">{group['label']}</span>
+                <span style="font-size:12px; color:#888; margin-left:10px;">{group['desc']}</span>
+            </div>
+            """, unsafe_allow_html=True)
+
+            cards = group["cards"]
+            if not cards:
+                st.caption("Tidak ada bundle tersedia untuk mode ini.")
+                continue
+
+            cols = st.columns(3)
+            for j, card in enumerate(cards):
+                with cols[j]:
+                    # Warna border berbeda jika di luar range harga
+                    border_color = "#e0e0e0" if card["in_range"] else "#ffcdd2"
+                    opacity = "1" if card["in_range"] else "0.65"
+                    out_of_range_note = "" if card["in_range"] else '<div style="font-size:11px;color:#e53935;margin-top:4px;">⚠️ Di luar rentang harga</div>'
+
                     st.markdown(f"""
-                    <div class="bundle-card">
-                        <span class="badge {res['badge']}">{res['tag']}</span>
-                        <div style="font-size:28px; margin-bottom:4px;">{res['icon']}</div>
-                        <div class="bundle-title">{res['name']}</div>
-                        <div style="font-size:12px; color:#666; margin-bottom:8px;">{res['desc']}</div>
-                        <div class="price-text">Rp {res['total']:,.0f}</div>
-                        <div style="font-size:11px; color:#aaa;">{len(res['parts'])} komponen</div>
+                    <div class="bundle-card" style="border-color:{border_color}; opacity:{opacity};">
+                        <span class="badge {card['badge']}">{card['name']}</span>
+                        <div style="font-size:24px; margin: 4px 0;">{card['icon']}</div>
+                        <div class="price-text">Rp {card['total']:,.0f}</div>
+                        <div style="font-size:11px; color:#888;">{len(card['parts'])} komponen</div>
+                        {out_of_range_note}
                     </div>
                     """, unsafe_allow_html=True)
 
-                    if st.button(f"Pilih & Sesuaikan", key=f"btn_{i}", use_container_width=True):
+                    if st.button("Pilih & Sesuaikan", key=f"btn_{btn_counter}", use_container_width=True):
                         st.session_state.selected_bundle = {
-                            "name": res['name'],
-                            "parts": dict(res['parts']),
-                            "total": res['total'],
-                            "icon": res['icon']
+                            "name": f"{group['label']} — {card['name']}",
+                            "parts": dict(card["parts"]),
+                            "total": card["total"],
+                            "icon": card["icon"]
                         }
                         st.session_state.view = 'detail'
                         st.rerun()
+                    btn_counter += 1
+
+            st.markdown("<hr style='border:none;border-top:1px solid #f0f0f0;margin:8px 0 4px 0;'>", unsafe_allow_html=True)
 
         # Info produk yang diexclude
         with st.expander("ℹ️ Info Filter Produk Aktif"):
