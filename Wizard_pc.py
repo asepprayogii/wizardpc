@@ -803,10 +803,15 @@ if uploaded_file:
     elif st.session_state.view == 'detail':
         bundle = st.session_state.selected_bundle
 
+        # Inisialisasi state untuk mode ganti
+        if 'ganti_cat' not in st.session_state:
+            st.session_state.ganti_cat = None
+
         col_back, col_title = st.columns([1, 8])
         with col_back:
             if st.button("Kembali"):
                 st.session_state.view = 'main'
+                st.session_state.ganti_cat = None
                 st.rerun()
         with col_title:
             st.subheader(bundle['name'])
@@ -819,26 +824,69 @@ if uploaded_file:
 
         with col_parts:
             st.markdown("#### Komponen Terpilih")
-            st.caption("Klik tombol  —  untuk menghapus komponen dari bundling")
             updated_parts = {}
+
             for cat in display_order:
-                if cat in bundle['parts']:
-                    item = bundle['parts'][cat]
-                    c1, c2 = st.columns([9, 1])
-                    with c1:
-                        st.markdown(f"""
-                        <div class="part-row">
-                            <div>
-                                <div class="category-label">{cat}</div>
-                                <div class="part-name">{item['Nama Accurate']}</div>
-                            </div>
-                            <div class="part-price">Rp {item['Web']:,.0f}</div>
+                if cat not in bundle['parts']:
+                    continue
+                item = bundle['parts'][cat]
+
+                # Baris komponen: info | tombol Ganti | tombol Hapus
+                c_info, c_ganti, c_hapus = st.columns([8, 1, 1])
+                with c_info:
+                    st.markdown(f"""
+                    <div class="part-row">
+                        <div>
+                            <div class="category-label">{cat}</div>
+                            <div class="part-name">{item['Nama Accurate']}</div>
                         </div>
-                        """, unsafe_allow_html=True)
-                    with c2:
-                        st.write("")
-                        if not st.button("—", key=f"del_{cat}", help=f"Hapus {cat}"):
-                            updated_parts[cat] = item
+                        <div class="part-price">Rp {item['Web']:,.0f}</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                with c_ganti:
+                    st.write("")
+                    if st.button("Ganti", key=f"ganti_{cat}", help=f"Ganti {cat}"):
+                        # Toggle: tutup jika klik kategori yang sama
+                        if st.session_state.ganti_cat == cat:
+                            st.session_state.ganti_cat = None
+                        else:
+                            st.session_state.ganti_cat = cat
+                        st.rerun()
+                with c_hapus:
+                    st.write("")
+                    if not st.button("—", key=f"del_{cat}", help=f"Hapus {cat}"):
+                        updated_parts[cat] = item
+
+                # Panel ganti produk — muncul di bawah baris jika kategori ini aktif
+                if st.session_state.ganti_cat == cat:
+                    # Ambil semua produk kategori ini yang tersedia di cabang & kategori penggunaan
+                    alternatif = data[
+                        (data['Kategori'] == cat) &
+                        (data[branch_col] > 0) &
+                        (data[cat_col] == True)
+                    ].sort_values('Web', ascending=True)
+
+                    if alternatif.empty:
+                        st.caption("Tidak ada produk lain tersedia untuk kategori ini.")
+                    else:
+                        with st.container():
+                            st.markdown(f"""
+                            <div style="background:#f0f4ff; border:1px solid #c5d3f0; border-radius:10px;
+                                        padding:12px 16px; margin-bottom:10px;">
+                                <div style="font-size:12px; font-weight:700; color:#1565C0; margin-bottom:8px;">
+                                    Pilih pengganti untuk {cat}
+                                </div>
+                            </div>
+                            """, unsafe_allow_html=True)
+
+                            for _, alt_row in alternatif.iterrows():
+                                is_current = alt_row['Nama Accurate'] == item['Nama Accurate']
+                                label = f"{'[Terpilih]  ' if is_current else ''}{alt_row['Nama Accurate']}  —  Rp {alt_row['Web']:,.0f}  |  Stok: {int(alt_row[branch_col])}"
+                                if st.button(label, key=f"pilih_{cat}_{alt_row.name}", disabled=is_current, use_container_width=True):
+                                    st.session_state.selected_bundle['parts'][cat] = alt_row.to_dict()
+                                    st.session_state.ganti_cat = None
+                                    st.rerun()
+
             st.session_state.selected_bundle['parts'] = updated_parts
 
         with col_summary:
