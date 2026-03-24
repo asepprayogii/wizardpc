@@ -852,16 +852,24 @@ if uploaded_file:
             )
             grand_total = total_items + (assembly_fee if is_assembled else 0)
 
-            st.markdown(f"""
+            # Bangun HTML di luar f-string agar tidak konflik tanda kutip
+            parts_html = ""
+            for item in updated_parts.values():
+                nama = item['Nama Accurate'][:30]
+                parts_html += f'<div style="font-size:12px; margin:3px 0; opacity:0.9;">• {nama}...</div>'
+            if is_assembled:
+                parts_html += f'<div style="font-size:12px; margin:3px 0; opacity:0.9;">• Jasa Rakit {usage_label}</div>'
+
+            summary_html = f"""
             <div class="summary-box">
                 <div style="font-size:13px; opacity:0.85; margin-bottom:6px;">RINGKASAN</div>
-                {"".join(f'<div style="font-size:12px; margin:3px 0; opacity:0.9;">• {item["Nama Accurate"][:30]}...</div>' for item in updated_parts.values())}
-                {"<div style='font-size:12px; margin:3px 0; opacity:0.9;'>• Jasa Rakit " + usage_label + "</div>" if is_assembled else ""}
+                {parts_html}
                 <hr style="border-color: rgba(255,255,255,0.3); margin:10px 0;">
                 <div style="font-size:13px; opacity:0.85;">Total Harga</div>
                 <div class="total-price">Rp {grand_total:,.0f}</div>
             </div>
-            """, unsafe_allow_html=True)
+            """
+            st.markdown(summary_html, unsafe_allow_html=True)
 
             st.write("")
             if st.button("Konfirmasi Bundling", use_container_width=True, type="primary"):
