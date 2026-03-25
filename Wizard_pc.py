@@ -5,32 +5,21 @@ import re
 # --- KONFIGURASI HALAMAN ---
 st.set_page_config(page_title="PC Wizard Pro", layout="wide", page_icon="🖥️")
 
-# --- CSS CUSTOM RESPONSIF ---
+# --- CSS CUSTOM ---
 st.markdown("""
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap');
+    
+    html, body, [class*="css"] { font-family: 'Space Grotesk', sans-serif; }
 
-    html, body, [class*="css"] {
-        font-family: 'Plus Jakarta Sans', sans-serif;
-    }
-
-    /* ── Responsif: container utama ── */
-    .block-container {
-        padding-left: 1rem !important;
-        padding-right: 1rem !important;
-        max-width: 100% !important;
-    }
-
-    /* ── Bundle Card ── */
     .bundle-card {
         border: 1.5px solid #e0e0e0;
         border-radius: 14px;
-        padding: 16px;
+        padding: 18px;
         background: linear-gradient(135deg, #ffffff 0%, #f8faff 100%);
-        margin-bottom: 12px;
+        margin-bottom: 16px;
         transition: all 0.25s ease;
         height: 100%;
-        box-sizing: border-box;
     }
     .bundle-card:hover {
         box-shadow: 0 8px 24px rgba(30, 136, 229, 0.15);
@@ -39,178 +28,78 @@ st.markdown("""
     }
     .price-text {
         color: #1565C0;
-        font-size: clamp(15px, 3vw, 20px);
+        font-size: 20px;
         font-weight: 700;
-        margin: 6px 0 4px 0;
-        word-break: break-word;
+        margin: 8px 0 4px 0;
     }
     .bundle-title {
         color: #1a1a2e;
-        font-size: clamp(13px, 2.5vw, 16px);
+        font-size: 16px;
         font-weight: 600;
         margin-bottom: 4px;
     }
     .badge {
         padding: 3px 10px;
         border-radius: 20px;
-        font-size: clamp(10px, 1.8vw, 11px);
+        font-size: 11px;
         font-weight: 700;
         display: inline-block;
         margin-bottom: 8px;
         letter-spacing: 0.5px;
-        white-space: nowrap;
     }
     .badge-stock { background: #E3F2FD; color: #1565C0; }
     .badge-price { background: #E8F5E9; color: #2E7D32; }
     .badge-smart { background: #FFF3E0; color: #E65100; }
-
-    /* ── Part Row (di halaman detail) ── */
+    .mode-card {
+        border: 2px solid #e0e0e0;
+        border-radius: 12px;
+        padding: 14px 18px;
+        cursor: pointer;
+        transition: all 0.2s;
+        text-align: center;
+        background: white;
+    }
+    .mode-card.active {
+        border-color: #1E88E5;
+        background: #E3F2FD;
+    }
     .part-row {
         border: 1px solid #eef2f7;
         border-radius: 10px;
-        padding: 10px 14px;
+        padding: 12px 16px;
         margin-bottom: 8px;
         background: #fafbff;
         display: flex;
-        align-items: flex-start;
+        align-items: center;
         justify-content: space-between;
-        flex-wrap: wrap;
-        gap: 6px;
     }
     .category-label {
-        font-size: clamp(10px, 1.6vw, 11px);
+        font-size: 11px;
         color: #888;
         font-weight: 600;
         text-transform: uppercase;
         letter-spacing: 0.5px;
     }
     .part-name {
-        font-size: clamp(12px, 2vw, 14px);
+        font-size: 14px;
         font-weight: 500;
         color: #1a1a2e;
-        word-break: break-word;
-        max-width: 100%;
     }
     .part-price {
-        font-size: clamp(12px, 2vw, 13px);
+        font-size: 13px;
         color: #1E88E5;
         font-weight: 600;
-        white-space: nowrap;
     }
-
-    /* ── Summary Box ── */
     .summary-box {
         background: linear-gradient(135deg, #1565C0, #1E88E5);
         border-radius: 14px;
-        padding: 18px;
+        padding: 20px;
         color: white;
     }
     .total-price {
-        font-size: clamp(18px, 4vw, 26px);
+        font-size: 26px;
         font-weight: 700;
         margin-top: 10px;
-        word-break: break-word;
-    }
-
-    /* ── Sidebar responsif ── */
-    [data-testid="stSidebar"] {
-        min-width: 220px !important;
-        max-width: 280px !important;
-    }
-    [data-testid="stSidebar"] .block-container {
-        padding: 1rem 0.75rem !important;
-    }
-
-    /* ── Tombol di mobile: full width ── */
-    @media (max-width: 768px) {
-        /* Judul */
-        h1 { font-size: 1.4rem !important; }
-        h2 { font-size: 1.2rem !important; }
-        h3, h4 { font-size: 1rem !important; }
-
-        /* Kolom bundle: satu kolom di mobile kecil */
-        [data-testid="stHorizontalBlock"] > div {
-            min-width: 100% !important;
-        }
-
-        /* Bundle card */
-        .bundle-card {
-            padding: 12px;
-        }
-
-        /* Part row: stack vertikal */
-        .part-row {
-            flex-direction: column;
-            align-items: flex-start;
-        }
-
-        /* Padding lebih kecil */
-        .block-container {
-            padding-left: 0.5rem !important;
-            padding-right: 0.5rem !important;
-        }
-
-        /* Summary box */
-        .summary-box {
-            padding: 14px;
-        }
-    }
-
-    @media (max-width: 480px) {
-        h1 { font-size: 1.2rem !important; }
-        .price-text { font-size: 14px !important; }
-        .total-price { font-size: 16px !important; }
-    }
-
-    /* ── Tablet: 2 kolom ── */
-    @media (min-width: 481px) and (max-width: 900px) {
-        .bundle-card {
-            padding: 14px;
-        }
-    }
-
-    /* ── Tombol ── */
-    [data-testid="stButton"] button {
-        border-radius: 8px !important;
-        font-size: clamp(12px, 1.8vw, 14px) !important;
-        padding: 0.4rem 0.7rem !important;
-        white-space: normal !important;
-        height: auto !important;
-        word-break: break-word !important;
-    }
-
-    /* ── Divider ── */
-    hr { margin: 8px 0 !important; }
-
-    /* ── Number input: cegah overflow di mobile ── */
-    input[type="number"] {
-        font-size: 14px !important;
-    }
-
-    /* ── Caption & info teks ── */
-    [data-testid="stCaptionContainer"] {
-        font-size: clamp(11px, 1.8vw, 13px) !important;
-    }
-
-    /* ── Scrollable alternatif produk di mobile ── */
-    .alt-scroll {
-        max-height: 280px;
-        overflow-y: auto;
-        padding-right: 4px;
-    }
-
-    /* Highlight panel ganti */
-    .ganti-panel {
-        background: #f0f4ff;
-        border: 1px solid #c5d3f0;
-        border-radius: 10px;
-        padding: 10px 14px;
-        margin-bottom: 8px;
-    }
-    .ganti-panel-title {
-        font-size: clamp(11px, 1.8vw, 12px);
-        font-weight: 700;
-        color: #1565C0;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -221,6 +110,7 @@ st.markdown("""
 # ============================================================
 
 def extract_ram_gb(name):
+    """Ekstrak kapasitas RAM dalam GB dari nama produk."""
     name = name.upper()
     match = re.search(r'(\d+)\s*GB', name)
     if match:
@@ -229,6 +119,7 @@ def extract_ram_gb(name):
 
 
 def extract_ddr_type(name):
+    """Ekstrak tipe DDR dari nama produk (DDR3, DDR4, DDR5)."""
     name = name.upper()
     match = re.search(r'DDR(\d)', name)
     if match:
@@ -237,16 +128,18 @@ def extract_ddr_type(name):
 
 
 def get_cpu_info(name):
+    """Ekstrak info CPU: generasi Intel, socket AMD, tipe F, tipe Tray."""
     name = name.upper()
     info = {
         "brand": "INTEL",
         "gen": None,
         "socket": None,
-        "is_f_type": False,
-        "is_tray": False,
-        "tier": None
+        "is_f_type": False,   # Perlu VGA
+        "is_tray": False,     # Perlu CPU Cooler
+        "tier": None          # i3/i5/i7/i9
     }
 
+    # Deteksi AMD
     if "RYZEN" in name or "AMD" in name:
         info["brand"] = "AMD"
         if any(x in name for x in ["7000", "8000", "9000", "9500", "9600", "9700", "9900"]) or "AM5" in name:
@@ -257,30 +150,38 @@ def get_cpu_info(name):
             info["is_tray"] = True
         return info
 
+    # Deteksi Intel Ultra
     if "ULTRA" in name:
         info["gen"] = "ULTRA"
         info["tier"] = "ULTRA"
-        info["is_f_type"] = True
+        info["is_f_type"] = True   # Ultra dianggap high-end, umumnya perlu VGA
         if "TRAY" in name or "NO FAN" in name:
             info["is_tray"] = True
         return info
 
+    # Deteksi Intel Core iX-Generation (contoh: i5-12400F, i7-13700)
+    # Tier
     tier_match = re.search(r'\bI([3579])\b', name)
     if tier_match:
         tier_num = int(tier_match.group(1))
         info["tier"] = f"I{tier_num}"
 
+    # Generasi dari nomor model (4-5 digit setelah iX-)
     gen_match = re.search(r'I[3579]-(\d{2,2})\d{2,3}', name)
     if gen_match:
         info["gen"] = int(gen_match.group(1))
     else:
+        # Coba dari pola lain misal "12400", "13700"
         model_match = re.search(r'\b(1[0-9])(\d{3})\b', name)
         if model_match:
             info["gen"] = int(model_match.group(1))
 
+    # Deteksi tipe F (butuh VGA eksternal)
+    # Pola: angka diikuti F di akhir bagian model, misal "12400F", "13700F"
     if re.search(r'\d{3,4}F\b', name):
         info["is_f_type"] = True
 
+    # Deteksi Tray (butuh CPU Cooler)
     if "TRAY" in name or "NO FAN" in name:
         info["is_tray"] = True
 
@@ -288,6 +189,7 @@ def get_cpu_info(name):
 
 
 def is_mobo_compatible(cpu_info, mobo_series):
+    """Cek kompatibilitas CPU dengan Motherboard."""
     gen = cpu_info["gen"]
     socket = cpu_info["socket"]
     brand = cpu_info["brand"]
@@ -299,6 +201,7 @@ def is_mobo_compatible(cpu_info, mobo_series):
             return mobo_series in ["A620", "B650", "B840", "B850", "X870"]
         return True
 
+    # Intel
     if gen == 10:
         return mobo_series in ["H410", "H510"]
     if gen == 11:
@@ -312,6 +215,7 @@ def is_mobo_compatible(cpu_info, mobo_series):
 
 
 def get_mobo_series(name):
+    """Ekstrak seri motherboard dari nama."""
     name = name.upper()
     series_list = [
         "H410", "H510", "H610", "H810",
@@ -329,6 +233,7 @@ def get_mobo_series(name):
 
 
 def get_mobo_category(series, price):
+    """Tentukan kategori mobo berdasarkan seri dan harga."""
     h_series = ["H410", "H510", "H610", "H810"]
     amd_a_series = ["A520", "A620"]
     b_series_intel = ["B660", "B760", "B860"]
@@ -359,6 +264,7 @@ def get_mobo_category(series, price):
 
 
 def get_vga_category(name):
+    """Tentukan kategori VGA."""
     name = name.upper()
     cats = {"office": False, "standar": False, "advance": False}
 
@@ -366,55 +272,66 @@ def get_vga_category(name):
     standar_series = ["GT1030", "GTX1650", "RTX3050", "RTX3060", "RTX5050", "RTX4060"]
     advance_series = ["RTX5060TI", "RTX5060 TI", "RTX5070TI", "RTX5070 TI", "RTX5080", "RTX5090"]
 
+    # Office
     if any(s in name for s in office_series):
         cats["office"] = True
         return cats
 
+    # Advance dulu (lebih spesifik)
     if any(s in name for s in advance_series):
         cats["advance"] = True
         return cats
 
+    # Cek RTX5060 (bukan TI)
     if "RTX5060" in name and "TI" not in name:
         cats["advance"] = True
         return cats
 
+    # Cek RTX5070 (bukan TI)
     if "RTX5070" in name and "TI" not in name:
         cats["advance"] = True
         return cats
 
+    # Standar
     if any(s in name for s in standar_series):
         cats["standar"] = True
         return cats
 
+    # Pattern RTX...50 atau RTX...60 (generasi baru)
     if re.search(r'RTX\s*\d*[56]0\b', name):
         cats["standar"] = True
         return cats
 
+    # Pattern RTX...>60 (generasi baru)
     if re.search(r'RTX\s*\d*[789]\d\b', name):
         cats["advance"] = True
         return cats
 
+    # Default VGA apapun masuk standar
     cats["standar"] = True
     return cats
 
 
 # ============================================================
-# PROCESS DATA
+# FUNGSI PROCESS DATA UTAMA
 # ============================================================
 
 def process_data(df):
     df = df.copy()
 
+    # Filter dasar: stok > 0 dan harga > 0
     df['Web'] = pd.to_numeric(df['Web'], errors='coerce').fillna(0)
     df = df[df['Stock Total'] > 0].copy()
     df = df[df['Web'] > 0].copy()
     df['Nama Accurate'] = df['Nama Accurate'].fillna('').astype(str)
     df['Kategori'] = df['Kategori'].fillna('').astype(str)
 
+    # Inisialisasi kolom kategori
     df['cat_office'] = False
     df['cat_standar'] = False
     df['cat_advance'] = False
 
+    # Kolom metadata
     df['need_vga'] = 0
     df['has_psu'] = 0
     df['need_cooler'] = 0
@@ -425,14 +342,18 @@ def process_data(df):
     df['cpu_is_f'] = False
     df['cpu_is_tray'] = False
     df['mobo_series'] = None
-    df['mobo_ddr'] = None
-    df['ram_ddr'] = None
+    df['mobo_ddr'] = None   # Tipe DDR yang didukung motherboard
+    df['ram_ddr'] = None    # Tipe DDR RAM
 
-    # PROCESSOR
+    # --------------------------------------------------------
+    # 1. PROCESSOR
+    # --------------------------------------------------------
     proc_mask = df['Kategori'] == 'Processor'
+
     for idx in df[proc_mask].index:
         name = df.at[idx, 'Nama Accurate'].upper()
         cpu = get_cpu_info(name)
+
         df.at[idx, 'cpu_brand'] = cpu['brand']
         df.at[idx, 'cpu_gen'] = cpu['gen']
         df.at[idx, 'cpu_socket'] = cpu['socket']
@@ -446,6 +367,10 @@ def process_data(df):
         is_f = cpu['is_f_type']
         brand = cpu['brand']
 
+        # Aturan kategori processor (hanya Intel sesuai spreadsheet)
+        # Office = I3/I5 Non-F
+        # Standar = I3/I5 tipe F
+        # Advance = I7/I9 tipe F
         if brand == "INTEL":
             if tier in ["I3", "I5"] and not is_f:
                 df.at[idx, 'cat_office'] = True
@@ -456,13 +381,17 @@ def process_data(df):
             if tier == "ULTRA":
                 df.at[idx, 'cat_advance'] = True
 
+        # AMD: masukkan sesuai tier (opsional, spreadsheet fokus Intel)
         if brand == "AMD":
             df.at[idx, 'cat_office'] = True
             df.at[idx, 'cat_standar'] = True
             df.at[idx, 'cat_advance'] = True
 
-    # MOTHERBOARD
+    # --------------------------------------------------------
+    # 2. MOTHERBOARD
+    # --------------------------------------------------------
     mb_mask = df['Kategori'] == 'Motherboard'
+
     for idx in df[mb_mask].index:
         name = df.at[idx, 'Nama Accurate'].upper()
         series = get_mobo_series(name)
@@ -475,18 +404,24 @@ def process_data(df):
             df.at[idx, 'cat_standar'] = cats['standar']
             df.at[idx, 'cat_advance'] = cats['advance']
         else:
+            # Default: masuk semua
             df.at[idx, 'cat_office'] = True
             df.at[idx, 'cat_standar'] = True
             df.at[idx, 'cat_advance'] = True
 
+        # Ekstrak tipe DDR yang didukung motherboard
         ddr = extract_ddr_type(name)
         df.at[idx, 'mobo_ddr'] = ddr
 
-    # RAM
+    # --------------------------------------------------------
+    # 3. RAM — Filter SODIMM & kapasitas
+    # --------------------------------------------------------
     ram_mask = df['Kategori'] == 'Memory RAM'
+    # Exclude SODIMM
     sodimm_mask = df['Nama Accurate'].str.upper().str.contains('SODIMM', na=False)
     df = df[~(ram_mask & sodimm_mask)].copy()
 
+    # Re-apply mask after drop
     ram_mask = df['Kategori'] == 'Memory RAM'
     for idx in df[ram_mask].index:
         name = df.at[idx, 'Nama Accurate']
@@ -500,12 +435,15 @@ def process_data(df):
             df.at[idx, 'cat_standar'] = True
         if 32 <= gb <= 64:
             df.at[idx, 'cat_advance'] = True
+        # Jika tidak terdeteksi, masuk semua
         if gb == 0:
             df.at[idx, 'cat_office'] = True
             df.at[idx, 'cat_standar'] = True
             df.at[idx, 'cat_advance'] = True
 
-    # SSD
+    # --------------------------------------------------------
+    # 4. SSD Internal — Exclude WDS120G2GOB, NVMe untuk Advance
+    # --------------------------------------------------------
     ssd_mask = df['Kategori'] == 'SSD Internal'
     exclude_ssd = df['Nama Accurate'].str.upper().str.contains('WDS120G2GOB', na=False)
     df = df[~(ssd_mask & exclude_ssd)].copy()
@@ -515,10 +453,13 @@ def process_data(df):
         name = df.at[idx, 'Nama Accurate'].upper()
         df.at[idx, 'cat_office'] = True
         df.at[idx, 'cat_standar'] = True
+        # Advance hanya M.2 NVMe
         if 'NVME' in name or 'M.2' in name or 'M2' in name:
             df.at[idx, 'cat_advance'] = True
 
-    # VGA
+    # --------------------------------------------------------
+    # 5. VGA
+    # --------------------------------------------------------
     vga_mask = df['Kategori'] == 'VGA'
     for idx in df[vga_mask].index:
         name = df.at[idx, 'Nama Accurate']
@@ -527,7 +468,9 @@ def process_data(df):
         df.at[idx, 'cat_standar'] = cats['standar']
         df.at[idx, 'cat_advance'] = cats['advance']
 
-    # CASING
+    # --------------------------------------------------------
+    # 6. CASING PC — Exclude Armageddon, handle PSU & VALCAS
+    # --------------------------------------------------------
     casing_mask = df['Kategori'] == 'Casing PC'
     armageddon_mask = df['Nama Accurate'].str.upper().str.contains('ARMAGEDDON', na=False)
     df = df[~(casing_mask & armageddon_mask)].copy()
@@ -538,22 +481,30 @@ def process_data(df):
         df.at[idx, 'cat_office'] = True
         df.at[idx, 'cat_standar'] = True
         df.at[idx, 'cat_advance'] = True
+
+        # Casing dengan PSU atau VALCAS sudah include PSU
         if 'PSU' in name or 'VALCAS' in name:
             df.at[idx, 'has_psu'] = 1
 
-    # PSU
+    # --------------------------------------------------------
+    # 7. POWER SUPPLY
+    # --------------------------------------------------------
     psu_mask = df['Kategori'] == 'Power Supply'
     for idx in df[psu_mask].index:
         price = df.at[idx, 'Web']
         name = df.at[idx, 'Nama Accurate'].upper()
+
         if price < 500_000:
             df.at[idx, 'cat_office'] = True
         if price >= 500_000:
             df.at[idx, 'cat_standar'] = True
+        # Advance: berlabel Bronze/Gold/Platinum
         if any(label in name for label in ['BRONZE', 'GOLD', 'PLATINUM']):
             df.at[idx, 'cat_advance'] = True
 
-    # CPU COOLER
+    # --------------------------------------------------------
+    # 8. CPU COOLER
+    # --------------------------------------------------------
     cooler_mask = df['Kategori'] == 'CPU Cooler'
     for idx in df[cooler_mask].index:
         price = df.at[idx, 'Web']
@@ -568,10 +519,11 @@ def process_data(df):
 
 
 # ============================================================
-# BUNDLING
+# FUNGSI BUNDLING (3 MODE x 3 VARIASI = 9 CARD)
 # ============================================================
 
 def sorted_items(items, mode, branch_col):
+    """Urutkan items sesuai mode, return DataFrame terurut."""
     if items.empty:
         return items
     if mode == 'stok_terbanyak':
@@ -586,6 +538,20 @@ def sorted_items(items, mode, branch_col):
 
 
 def build_bundle(available, branch_col, mode, variant_idx):
+    """
+    Buat 1 bundle berdasarkan mode dan variant_idx (0, 1, 2).
+
+    Setiap mode mengurutkan semua produk per kategori sesuai kriterianya,
+    lalu variant_idx menentukan pilihan ke-1, ke-2, atau ke-3 dari ranking tsb.
+    Jika produk kurang dari variant_idx+1, gunakan yang terakhir tersedia.
+
+    Mode:
+    - 'stok_terbanyak': urutkan stok terbesar (tanpa mempertimbangkan harga)
+    - 'harga_termurah' : urutkan harga terkecil (tanpa mempertimbangkan stok)
+    - 'smart_pick'     : dari rentang [harga_termurah .. harga_termurah+100rb],
+                         ambil stok terbanyak
+    """
+
     def pick(items):
         ranked = sorted_items(items, mode, branch_col)
         if ranked.empty:
@@ -595,12 +561,14 @@ def build_bundle(available, branch_col, mode, variant_idx):
 
     bundle = {}
 
+    # 1. Processor
     procs = available[available['Kategori'] == 'Processor']
     proc = pick(procs)
     if proc is None:
         return None
     bundle['Processor'] = proc
 
+    # 2. Motherboard — compatible dengan processor terpilih
     mobos = available[available['Kategori'] == 'Motherboard']
     cpu_info = {
         'brand': proc.get('cpu_brand', 'INTEL'),
@@ -615,6 +583,7 @@ def build_bundle(available, branch_col, mode, variant_idx):
         return None
     bundle['Motherboard'] = mobo
 
+    # 3. RAM — harus matching DDR dengan Motherboard
     rams = available[available['Kategori'] == 'Memory RAM']
     mobo_ddr = mobo.get('mobo_ddr', None)
     if mobo_ddr:
@@ -625,22 +594,26 @@ def build_bundle(available, branch_col, mode, variant_idx):
     if ram is not None:
         bundle['Memory RAM'] = ram
 
+    # 4. SSD Internal
     ssds = available[available['Kategori'] == 'SSD Internal']
     ssd = pick(ssds)
     if ssd is not None:
         bundle['SSD Internal'] = ssd
 
+    # 5. VGA — kondisional: hanya jika processor tipe F
     if proc.get('need_vga', 0) == 1:
         vgas = available[available['Kategori'] == 'VGA']
         vga = pick(vgas)
         if vga is not None:
             bundle['VGA'] = vga
 
+    # 6. Casing PC
     casings = available[available['Kategori'] == 'Casing PC']
     casing = pick(casings)
     if casing is not None:
         bundle['Casing PC'] = casing
 
+    # 7. PSU — kondisional: skip jika casing sudah include PSU/VALCAS
     casing_has_psu = (casing is not None and casing.get('has_psu', 0) == 1)
     if not casing_has_psu:
         psus = available[available['Kategori'] == 'Power Supply']
@@ -648,6 +621,7 @@ def build_bundle(available, branch_col, mode, variant_idx):
         if psu is not None:
             bundle['Power Supply'] = psu
 
+    # 8. CPU Cooler — kondisional: hanya jika processor tipe Tray
     if proc.get('need_cooler', 0) == 1:
         coolers = available[available['Kategori'] == 'CPU Cooler']
         cooler = pick(coolers)
@@ -659,6 +633,7 @@ def build_bundle(available, branch_col, mode, variant_idx):
 
 
 def rebuild_from_processor(proc, available, branch_col):
+    """Rebuild seluruh bundle dari processor baru (cascade saat ganti Processor)."""
     def pick_first(items):
         return sorted_items(items, 'harga_termurah', branch_col).iloc[0] if not items.empty else None
 
@@ -709,6 +684,7 @@ def rebuild_from_processor(proc, available, branch_col):
 
 
 def rebuild_from_mobo(mobo, current_bundle, available, branch_col):
+    """Rebuild RAM saja saat Motherboard diganti (DDR bisa berubah)."""
     bundle = dict(current_bundle)
     bundle['Motherboard'] = mobo
 
@@ -725,6 +701,7 @@ def rebuild_from_mobo(mobo, current_bundle, available, branch_col):
 
 
 def rebuild_from_casing(casing, current_bundle, available, branch_col):
+    """Update PSU saat Casing diganti (casing PSU/VALCAS tidak perlu PSU)."""
     bundle = dict(current_bundle)
     bundle['Casing PC'] = casing
 
@@ -740,6 +717,11 @@ def rebuild_from_casing(casing, current_bundle, available, branch_col):
 
 
 def generate_bundles(df, branch_col, cat_col, price_min=0, price_max=0):
+    """
+    Generate 9 bundle: 3 mode x 3 variasi (pilihan ke-1/2/3 dari ranking).
+    Hasil dikelompokkan per mode agar bisa ditampilkan per baris.
+    Jika price_min dan price_max keduanya 0, filter harga diabaikan.
+    """
     available = df[(df[branch_col] > 0) & (df[cat_col] == True)].copy()
     use_price_filter = not (price_min == 0 and price_max == 0)
 
@@ -792,7 +774,7 @@ def generate_bundles(df, branch_col, cat_col, price_min=0, price_max=0):
 # MAIN APP
 # ============================================================
 
-st.title("🖥️ PC Wizard Pro")
+st.title("PC Wizard Pro")
 st.caption("Sistem Rekomendasi Bundling PC Otomatis")
 
 if 'view' not in st.session_state:
@@ -807,8 +789,10 @@ if uploaded_file:
         raw_df = pd.read_csv(uploaded_file) if uploaded_file.name.endswith('.csv') else pd.read_excel(uploaded_file)
         data = process_data(raw_df)
 
-    # ── SIDEBAR ──
-    st.sidebar.header("⚙️ Konfigurasi")
+    # --------------------------------------------------------
+    # SIDEBAR
+    # --------------------------------------------------------
+    st.sidebar.header("Konfigurasi")
 
     branch_map = {
         "Surabaya": ["Stock A - ITC", "Stock B", "Stock Y - SBY"],
@@ -820,8 +804,9 @@ if uploaded_file:
     }
 
     selected_branch = st.sidebar.selectbox("Cabang", list(branch_map.keys()), index=0)
-    branch_cols = branch_map[selected_branch]
+    branch_cols = branch_map[selected_branch]  # list of columns
 
+    # Buat kolom gabungan stok untuk cabang Surabaya (sum ITC+SBY+Y)
     if selected_branch == "Surabaya":
         data['_stock_branch'] = data[branch_cols].sum(axis=1)
     else:
@@ -837,9 +822,9 @@ if uploaded_file:
         "Kategori Penggunaan",
         list(usage_options.keys()),
         format_func=lambda x: {
-            "Office":  "🖥️ Office (< 10 jt)",
-            "Standar": "💻 Standar (10–20 jt)",
-            "Advance": "🚀 Advance (> 20 jt)"
+            "Office":  "Office (< 10 jt)",
+            "Standar": "Standar (10 - 20 jt)",
+            "Advance": "Advance (> 20 jt)"
         }[x]
     )
     cat_col = usage_options[usage_label]
@@ -847,6 +832,7 @@ if uploaded_file:
     assembly_map = {"Office": 100_000, "Standar": 150_000, "Advance": 200_000}
     assembly_fee = assembly_map[usage_label]
 
+    # Range harga otomatis sesuai aturan wizard
     price_range_map = {
         "Office":  (0,          10_000_000),
         "Standar": (10_000_000, 20_000_000),
@@ -855,11 +841,12 @@ if uploaded_file:
     default_min, default_max = price_range_map[usage_label]
 
     st.sidebar.divider()
-    st.sidebar.markdown("**💰 Filter Harga**")
-    price_min = st.sidebar.number_input("Min (Rp)", min_value=0, value=default_min, step=500_000)
-    price_max = st.sidebar.number_input("Max (Rp)", min_value=0, value=default_max, step=500_000)
+    price_min = st.sidebar.number_input("Harga Min (Rp)", min_value=0, value=default_min, step=500_000)
+    price_max = st.sidebar.number_input("Harga Max (Rp)", min_value=0, value=default_max, step=500_000)
 
-    # ── VIEW: MAIN ──
+    # --------------------------------------------------------
+    # VIEW: MAIN (9 card: 3 mode x 3 variasi)
+    # --------------------------------------------------------
     if st.session_state.view == 'main':
         st.subheader(f"Rekomendasi Bundling — {usage_label} | {selected_branch}")
 
@@ -871,11 +858,10 @@ if uploaded_file:
 
         btn_counter = 0
         for group in grouped:
-            # Header group
             st.markdown(f"""
-            <div style="margin:20px 0 6px 0; display:flex; flex-wrap:wrap; align-items:center; gap:8px;">
-                <span style="font-size:clamp(14px,3vw,17px); font-weight:700; color:#1a1a2e;">{group['label']}</span>
-                <span style="font-size:clamp(10px,1.8vw,12px); color:#888;">{group['desc']}</span>
+            <div style="margin: 20px 0 6px 0;">
+                <span style="font-size:17px; font-weight:700; color:#1a1a2e;">{group['label']}</span>
+                <span style="font-size:12px; color:#888; margin-left:10px;">{group['desc']}</span>
             </div>
             """, unsafe_allow_html=True)
 
@@ -884,22 +870,18 @@ if uploaded_file:
                 st.caption("Tidak ada bundle tersedia untuk mode ini.")
                 continue
 
-            # Responsif: gunakan 1, 2, atau 3 kolom
-            # Streamlit columns tetap 3, tapi CSS akan menata ulang di mobile
             cols = st.columns(3)
             for j, card in enumerate(cards):
                 with cols[j]:
                     border_color = "#e0e0e0" if card["in_range"] else "#ffcdd2"
                     opacity = "1" if card["in_range"] else "0.65"
-                    out_tag = "" if card["in_range"] else \
-                        '<div style="font-size:11px;color:#e53935;margin-top:4px;">⚠️ Di luar rentang harga</div>'
-
+                    out_of_range_note = "" if card["in_range"] else '<div style="font-size:11px;color:#e53935;margin-top:4px;">Di luar rentang harga</div>'
                     st.markdown(f"""
                     <div class="bundle-card" style="border-color:{border_color}; opacity:{opacity};">
                         <span class="badge {card['badge']}">{card['name']}</span>
                         <div class="price-text">Rp {card['total']:,.0f}</div>
-                        <div style="font-size:clamp(10px,1.8vw,11px); color:#888;">{len(card['parts'])} komponen</div>
-                        {out_tag}
+                        <div style="font-size:11px; color:#888;">{len(card['parts'])} komponen</div>
+                        {out_of_range_note}
                     </div>
                     """, unsafe_allow_html=True)
 
@@ -913,10 +895,10 @@ if uploaded_file:
                         st.rerun()
                     btn_counter += 1
 
-            st.markdown("<hr style='border:none;border-top:1px solid #f0f0f0;margin:8px 0 4px 0;'>",
-                        unsafe_allow_html=True)
+            st.markdown("<hr style='border:none;border-top:1px solid #f0f0f0;margin:8px 0 4px 0;'>", unsafe_allow_html=True)
 
-        with st.expander("ℹ️ Info Filter Produk Aktif"):
+        # Info produk yang diexclude
+        with st.expander("Info Filter Produk Aktif"):
             st.markdown("""
             - **Processor**: Hanya Intel (AMD sebagai fallback)
             - **RAM**: Produk SODIMM dihapus
@@ -927,16 +909,19 @@ if uploaded_file:
             - **CPU Cooler**: Muncul hanya jika Processor tipe Tray
             """)
 
-    # ── VIEW: DETAIL ──
+    # --------------------------------------------------------
+    # VIEW: DETAIL (sesuaikan bundle)
+    # --------------------------------------------------------
     elif st.session_state.view == 'detail':
         bundle = st.session_state.selected_bundle
 
+        # Inisialisasi state untuk mode ganti
         if 'ganti_cat' not in st.session_state:
             st.session_state.ganti_cat = None
 
-        col_back, col_title = st.columns([1, 6])
+        col_back, col_title = st.columns([1, 8])
         with col_back:
-            if st.button("← Kembali"):
+            if st.button("Kembali"):
                 st.session_state.view = 'main'
                 st.session_state.ganti_cat = None
                 st.rerun()
@@ -945,15 +930,12 @@ if uploaded_file:
 
         st.divider()
 
-        # Layout responsif: di mobile summary di bawah, di desktop di samping
-        # Gunakan rasio kolom yang lebih ramah mobile
         col_parts, col_summary = st.columns([3, 1])
 
-        display_order = ['Processor', 'Motherboard', 'Memory RAM', 'SSD Internal',
-                         'VGA', 'Casing PC', 'Power Supply', 'CPU Cooler']
+        display_order = ['Processor', 'Motherboard', 'Memory RAM', 'SSD Internal', 'VGA', 'Casing PC', 'Power Supply', 'CPU Cooler']
 
         with col_parts:
-            st.markdown("#### 🔧 Komponen Terpilih")
+            st.markdown("#### Komponen Terpilih")
             updated_parts = {}
 
             for cat in display_order:
@@ -961,25 +943,22 @@ if uploaded_file:
                     continue
                 item = bundle['parts'][cat]
 
-                # Di mobile, tombol Ganti & Hapus ditumpuk; pakai kolom ramping
-                c_info, c_ganti, c_hapus = st.columns([7, 1, 1])
+                # Baris komponen: info | tombol Ganti | tombol Hapus
+                c_info, c_ganti, c_hapus = st.columns([8, 1, 1])
                 with c_info:
-                    # Nama dipotong jika terlalu panjang agar tidak overflow
-                    nama_display = item['Nama Accurate']
                     st.markdown(f"""
                     <div class="part-row">
-                        <div style="flex:1; min-width:0;">
+                        <div>
                             <div class="category-label">{cat}</div>
-                            <div class="part-name">{nama_display}</div>
+                            <div class="part-name">{item['Nama Accurate']}</div>
                         </div>
-                        <div class="part-price" style="flex-shrink:0; padding-left:8px;">
-                            Rp {item['Web']:,.0f}
-                        </div>
+                        <div class="part-price">Rp {item['Web']:,.0f}</div>
                     </div>
                     """, unsafe_allow_html=True)
                 with c_ganti:
                     st.write("")
-                    if st.button("✏️", key=f"ganti_{cat}", help=f"Ganti {cat}"):
+                    if st.button("Ganti", key=f"ganti_{cat}", help=f"Ganti {cat}"):
+                        # Toggle: tutup jika klik kategori yang sama
                         if st.session_state.ganti_cat == cat:
                             st.session_state.ganti_cat = None
                         else:
@@ -987,16 +966,17 @@ if uploaded_file:
                         st.rerun()
                 with c_hapus:
                     st.write("")
-                    if not st.button("🗑️", key=f"del_{cat}", help=f"Hapus {cat}"):
+                    if not st.button("—", key=f"del_{cat}", help=f"Hapus {cat}"):
                         updated_parts[cat] = item
 
-                # Panel ganti produk
+                # Panel ganti produk — muncul di bawah baris jika kategori ini aktif
                 if st.session_state.ganti_cat == cat:
                     available_all = data[(data[branch_col] > 0) & (data[cat_col] == True)].copy()
                     alternatif = available_all[
                         available_all['Kategori'] == cat
                     ].sort_values('Web', ascending=True)
 
+                    # Filter RAM sesuai DDR mobo saat ini
                     if cat == 'Memory RAM' and 'Motherboard' in bundle['parts']:
                         mobo_ddr = bundle['parts']['Motherboard'].get('mobo_ddr', None)
                         if mobo_ddr:
@@ -1008,71 +988,72 @@ if uploaded_file:
                         st.caption("Tidak ada produk lain tersedia untuk kategori ini.")
                     else:
                         st.markdown(f"""
-                        <div class="ganti-panel">
-                            <div class="ganti-panel-title">🔄 Pilih pengganti untuk {cat}</div>
+                        <div style="background:#f0f4ff; border:1px solid #c5d3f0; border-radius:10px;
+                                    padding:10px 14px; margin-bottom:8px;">
+                            <div style="font-size:12px; font-weight:700; color:#1565C0;">
+                                Pilih pengganti untuk {cat}
+                            </div>
                         </div>
                         """, unsafe_allow_html=True)
 
-                        # Scrollable container di mobile
-                        with st.container(height=260):
-                            for _, alt_row in alternatif.iterrows():
-                                is_current = alt_row['Nama Accurate'] == item['Nama Accurate']
-                                stok = int(alt_row[branch_col])
-                                harga = f"Rp {alt_row['Web']:,.0f}"
-                                nama_alt = alt_row['Nama Accurate']
-                                label = f"{'✅ ' if is_current else ''}{nama_alt}  —  {harga}  |  Stok: {stok}"
-                                if st.button(label, key=f"pilih_{cat}_{alt_row.name}",
-                                             disabled=is_current, use_container_width=True):
-                                    alt_dict = alt_row.to_dict()
+                        for _, alt_row in alternatif.iterrows():
+                            is_current = alt_row['Nama Accurate'] == item['Nama Accurate']
+                            label = f"{'[Terpilih]  ' if is_current else ''}{alt_row['Nama Accurate']}  —  Rp {alt_row['Web']:,.0f}  |  Stok: {int(alt_row[branch_col])}"
+                            if st.button(label, key=f"pilih_{cat}_{alt_row.name}", disabled=is_current, use_container_width=True):
+                                alt_dict = alt_row.to_dict()
 
-                                    if cat == 'Processor':
-                                        new_parts = rebuild_from_processor(alt_dict, available_all, branch_col)
-                                        if new_parts:
-                                            st.session_state.selected_bundle['parts'] = new_parts
-                                    elif cat == 'Motherboard':
-                                        new_parts = rebuild_from_mobo(alt_dict, bundle['parts'], available_all, branch_col)
+                                # CASCADE: sesuaikan komponen lain jika perlu
+                                if cat == 'Processor':
+                                    # Ganti processor → rebuild semua
+                                    new_parts = rebuild_from_processor(alt_dict, available_all, branch_col)
+                                    if new_parts:
                                         st.session_state.selected_bundle['parts'] = new_parts
-                                    elif cat == 'Casing PC':
-                                        new_parts = rebuild_from_casing(alt_dict, bundle['parts'], available_all, branch_col)
-                                        st.session_state.selected_bundle['parts'] = new_parts
-                                    else:
-                                        st.session_state.selected_bundle['parts'][cat] = alt_dict
+                                elif cat == 'Motherboard':
+                                    # Ganti mobo → sesuaikan RAM
+                                    new_parts = rebuild_from_mobo(alt_dict, bundle['parts'], available_all, branch_col)
+                                    st.session_state.selected_bundle['parts'] = new_parts
+                                elif cat == 'Casing PC':
+                                    # Ganti casing → sesuaikan PSU
+                                    new_parts = rebuild_from_casing(alt_dict, bundle['parts'], available_all, branch_col)
+                                    st.session_state.selected_bundle['parts'] = new_parts
+                                else:
+                                    # SSD, RAM, VGA, PSU, CPU Cooler → ganti langsung, tidak cascade
+                                    st.session_state.selected_bundle['parts'][cat] = alt_dict
 
-                                    st.session_state.ganti_cat = None
-                                    st.rerun()
+                                st.session_state.ganti_cat = None
+                                st.rerun()
 
             st.session_state.selected_bundle['parts'] = updated_parts
 
         with col_summary:
             total_items = sum(item['Web'] for item in updated_parts.values())
             is_assembled = st.checkbox(
-                "➕ Jasa Rakit",
+                f"Tambah Jasa Rakit",
                 value=False,
                 help=f"Biaya jasa rakit {usage_label}: Rp {assembly_fee:,.0f}"
             )
             grand_total = total_items + (assembly_fee if is_assembled else 0)
 
+            # Bangun HTML di luar f-string agar tidak konflik tanda kutip
             parts_html = ""
             for item in updated_parts.values():
-                nama = item['Nama Accurate'][:28]
-                parts_html += f'<div style="font-size:clamp(10px,1.6vw,12px); margin:3px 0; opacity:0.9;">• {nama}…</div>'
+                nama = item['Nama Accurate'][:30]
+                parts_html += f'<div style="font-size:12px; margin:3px 0; opacity:0.9;">• {nama}...</div>'
             if is_assembled:
-                parts_html += f'<div style="font-size:clamp(10px,1.6vw,12px); margin:3px 0; opacity:0.9;">• Jasa Rakit {usage_label}</div>'
+                parts_html += f'<div style="font-size:12px; margin:3px 0; opacity:0.9;">• Jasa Rakit {usage_label}</div>'
 
             summary_html = f"""
             <div class="summary-box">
-                <div style="font-size:clamp(11px,1.8vw,13px); opacity:0.85; margin-bottom:6px; font-weight:700;">
-                    📋 RINGKASAN
-                </div>
+                <div style="font-size:13px; opacity:0.85; margin-bottom:6px;">RINGKASAN</div>
                 {parts_html}
-                <hr style="border-color:rgba(255,255,255,0.3); margin:10px 0;">
-                <div style="font-size:clamp(10px,1.6vw,13px); opacity:0.85;">Total Harga</div>
+                <hr style="border-color: rgba(255,255,255,0.3); margin:10px 0;">
+                <div style="font-size:13px; opacity:0.85;">Total Harga</div>
                 <div class="total-price">Rp {grand_total:,.0f}</div>
             </div>
             """
             st.markdown(summary_html, unsafe_allow_html=True)
 
             st.write("")
-            if st.button("✅ Konfirmasi Bundling", use_container_width=True, type="primary"):
+            if st.button("Konfirmasi Bundling", use_container_width=True, type="primary"):
                 st.balloons()
-                st.success(f"Bundle dikonfirmasi!\nTotal: Rp {grand_total:,.0f}")
+                st.success(f"Bundle dikonfirmasi! Total: Rp {grand_total:,.0f}")
