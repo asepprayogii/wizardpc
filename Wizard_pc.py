@@ -1051,7 +1051,7 @@ if uploaded_file:
                 <div class="total-price">Rp {grand_total:,.0f}</div>
             </div>
             """
-            st.markdown(summary_html, unsafe_allow_html=True)
+            st.markdown(summary_html, unsafe_allow_html=True) 
 
             st.write("")
             if st.button("Konfirmasi Bundling", use_container_width=True, type="primary"):
