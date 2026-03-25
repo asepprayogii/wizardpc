@@ -1050,7 +1050,7 @@ if uploaded_file:
                 <div style="font-size:13px; opacity:0.85;">Total Harga</div>
                 <div class="total-price">Rp {grand_total:,.0f}</div>
             </div>
-            """
+            """ 
             st.markdown(summary_html, unsafe_allow_html=True)
 
             st.write("")
