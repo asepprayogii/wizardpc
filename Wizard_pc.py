@@ -1056,4 +1056,4 @@ if uploaded_file:
             st.write("")
             if st.button("Konfirmasi Bundling", use_container_width=True, type="primary"):
                 st.balloons()
-                st.success(f"Bundle dikonfirmasi! Total: Rp {grand_total:,.0f}")
+                st.success(f"Bundle dikonfirmasi! Total: Rp {grand_total:,.0f}") 
