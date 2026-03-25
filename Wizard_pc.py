@@ -8,98 +8,221 @@ st.set_page_config(page_title="PC Wizard Pro", layout="wide", page_icon="🖥️
 # --- CSS CUSTOM ---
 st.markdown("""
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap');
-    
-    html, body, [class*="css"] { font-family: 'Space Grotesk', sans-serif; }
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
+    html, body, [class*="css"] {
+        font-family: 'Inter', sans-serif;
+    }
+
+    /* ── Sidebar ── */
+    section[data-testid="stSidebar"] {
+        background: #f7f9fc;
+        border-right: 1px solid #e8ecf0;
+    }
+    section[data-testid="stSidebar"] .stRadio label {
+        font-size: 13px;
+    }
+
+    /* ── Header area ── */
+    .page-header {
+        padding: 4px 0 16px 0;
+        border-bottom: 2px solid #f0f2f6;
+        margin-bottom: 20px;
+    }
+    .page-title {
+        font-size: 22px;
+        font-weight: 700;
+        color: #1a1a2e;
+        margin: 0;
+    }
+    .page-subtitle {
+        font-size: 13px;
+        color: #888;
+        margin: 2px 0 0 0;
+    }
+
+    /* ── Mode section label ── */
+    .mode-label {
+        font-size: 14px;
+        font-weight: 700;
+        color: #1a1a2e;
+        margin: 24px 0 2px 0;
+        padding-left: 2px;
+    }
+    .mode-desc {
+        font-size: 12px;
+        color: #999;
+        margin: 0 0 10px 2px;
+    }
+
+    /* ── Bundle card ── */
     .bundle-card {
-        border: 1.5px solid #e0e0e0;
-        border-radius: 14px;
-        padding: 18px;
-        background: linear-gradient(135deg, #ffffff 0%, #f8faff 100%);
-        margin-bottom: 16px;
-        transition: all 0.25s ease;
-        height: 100%;
+        border: 1.5px solid #e4e8f0;
+        border-radius: 12px;
+        padding: 16px;
+        background: #fff;
+        margin-bottom: 12px;
+        transition: box-shadow 0.2s, border-color 0.2s, transform 0.2s;
+        min-height: 110px;
     }
     .bundle-card:hover {
-        box-shadow: 0 8px 24px rgba(30, 136, 229, 0.15);
+        box-shadow: 0 6px 20px rgba(30,136,229,0.12);
         border-color: #1E88E5;
-        transform: translateY(-4px);
+        transform: translateY(-3px);
     }
-    .price-text {
-        color: #1565C0;
-        font-size: 20px;
-        font-weight: 700;
-        margin: 8px 0 4px 0;
+    .bundle-card.out-range {
+        opacity: 0.55;
+        border-color: #ffd0cc;
+        background: #fff8f8;
     }
-    .bundle-title {
-        color: #1a1a2e;
-        font-size: 16px;
-        font-weight: 600;
-        margin-bottom: 4px;
-    }
+
+    /* ── Badge ── */
     .badge {
-        padding: 3px 10px;
-        border-radius: 20px;
-        font-size: 11px;
-        font-weight: 700;
         display: inline-block;
+        padding: 2px 9px;
+        border-radius: 20px;
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: 0.4px;
         margin-bottom: 8px;
-        letter-spacing: 0.5px;
+        text-transform: uppercase;
     }
-    .badge-stock { background: #E3F2FD; color: #1565C0; }
-    .badge-price { background: #E8F5E9; color: #2E7D32; }
-    .badge-smart { background: #FFF3E0; color: #E65100; }
-    .mode-card {
-        border: 2px solid #e0e0e0;
-        border-radius: 12px;
-        padding: 14px 18px;
-        cursor: pointer;
-        transition: all 0.2s;
-        text-align: center;
-        background: white;
+    .badge-stock { background: #dbeafe; color: #1d4ed8; }
+    .badge-price { background: #dcfce7; color: #15803d; }
+    .badge-smart { background: #fef3c7; color: #b45309; }
+
+    .card-price {
+        font-size: 18px;
+        font-weight: 700;
+        color: #1565C0;
+        margin: 4px 0 2px 0;
+        line-height: 1.2;
     }
-    .mode-card.active {
-        border-color: #1E88E5;
-        background: #E3F2FD;
+    .card-meta {
+        font-size: 11px;
+        color: #aaa;
+        margin-top: 2px;
     }
+    .card-warn {
+        font-size: 11px;
+        color: #dc2626;
+        margin-top: 6px;
+        font-weight: 500;
+    }
+
+    /* ── Divider between mode groups ── */
+    .mode-divider {
+        border: none;
+        border-top: 1px solid #f0f2f6;
+        margin: 4px 0 0 0;
+    }
+
+    /* ── Detail view: part row ── */
     .part-row {
-        border: 1px solid #eef2f7;
-        border-radius: 10px;
-        padding: 12px 16px;
-        margin-bottom: 8px;
-        background: #fafbff;
         display: flex;
         align-items: center;
         justify-content: space-between;
+        border: 1px solid #eef1f7;
+        border-radius: 10px;
+        padding: 10px 14px;
+        margin-bottom: 6px;
+        background: #fafbff;
+        transition: border-color 0.15s;
+        gap: 8px;
     }
-    .category-label {
-        font-size: 11px;
-        color: #888;
-        font-weight: 600;
+    .part-row:hover { border-color: #c5d3f0; }
+    .part-left { flex: 1; min-width: 0; }
+    .cat-label {
+        font-size: 10px;
+        font-weight: 700;
+        color: #aaa;
         text-transform: uppercase;
         letter-spacing: 0.5px;
+        margin-bottom: 2px;
     }
     .part-name {
-        font-size: 14px;
+        font-size: 13px;
         font-weight: 500;
         color: #1a1a2e;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
     }
     .part-price {
         font-size: 13px;
-        color: #1E88E5;
         font-weight: 600;
+        color: #1E88E5;
+        white-space: nowrap;
+        flex-shrink: 0;
     }
+
+    /* ── Alternatif panel ── */
+    .alt-header {
+        background: #f0f5ff;
+        border: 1px solid #d0deff;
+        border-radius: 8px;
+        padding: 8px 12px;
+        font-size: 12px;
+        font-weight: 600;
+        color: #1565C0;
+        margin-bottom: 6px;
+    }
+
+    /* ── Summary box ── */
     .summary-box {
-        background: linear-gradient(135deg, #1565C0, #1E88E5);
+        background: linear-gradient(145deg, #1a56db, #1E88E5);
         border-radius: 14px;
-        padding: 20px;
-        color: white;
+        padding: 18px;
+        color: #fff;
+        position: sticky;
+        top: 80px;
     }
-    .total-price {
-        font-size: 26px;
+    .summary-label {
+        font-size: 10px;
         font-weight: 700;
-        margin-top: 10px;
+        letter-spacing: 1px;
+        text-transform: uppercase;
+        opacity: 0.75;
+        margin-bottom: 10px;
+    }
+    .summary-item {
+        font-size: 11.5px;
+        opacity: 0.88;
+        margin: 3px 0;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .summary-divider {
+        border: none;
+        border-top: 1px solid rgba(255,255,255,0.25);
+        margin: 12px 0;
+    }
+    .summary-total-label {
+        font-size: 11px;
+        opacity: 0.75;
+        margin-bottom: 2px;
+    }
+    .summary-total {
+        font-size: 22px;
+        font-weight: 700;
+        line-height: 1.2;
+    }
+
+    /* ── Streamlit button overrides ── */
+    div[data-testid="stButton"] > button {
+        border-radius: 8px;
+        font-size: 13px;
+        font-weight: 500;
+        transition: all 0.15s;
+    }
+
+    /* ── Upload area ── */
+    div[data-testid="stFileUploader"] {
+        border: 2px dashed #d0d9e8;
+        border-radius: 12px;
+        padding: 8px 16px;
+        background: #f9fbff;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -848,7 +971,12 @@ if uploaded_file:
     # VIEW: MAIN (9 card: 3 mode x 3 variasi)
     # --------------------------------------------------------
     if st.session_state.view == 'main':
-        st.subheader(f"Rekomendasi Bundling — {usage_label} | {selected_branch}")
+        st.markdown(f"""
+        <div class="page-header">
+            <div class="page-title">Rekomendasi Bundling PC</div>
+            <div class="page-subtitle">{usage_label} &nbsp;·&nbsp; {selected_branch} &nbsp;·&nbsp; Rp {price_min:,.0f} – Rp {price_max:,.0f}</div>
+        </div>
+        """, unsafe_allow_html=True)
 
         grouped = generate_bundles(data, branch_col, cat_col, price_min, price_max)
 
@@ -859,32 +987,29 @@ if uploaded_file:
         btn_counter = 0
         for group in grouped:
             st.markdown(f"""
-            <div style="margin: 20px 0 6px 0;">
-                <span style="font-size:17px; font-weight:700; color:#1a1a2e;">{group['label']}</span>
-                <span style="font-size:12px; color:#888; margin-left:10px;">{group['desc']}</span>
-            </div>
+            <div class="mode-label">{group['label']}</div>
+            <div class="mode-desc">{group['desc']}</div>
             """, unsafe_allow_html=True)
 
             cards = group["cards"]
             if not cards:
                 st.caption("Tidak ada bundle tersedia untuk mode ini.")
+                st.markdown("<hr class='mode-divider'>", unsafe_allow_html=True)
                 continue
 
-            cols = st.columns(3)
+            cols = st.columns(3, gap="small")
             for j, card in enumerate(cards):
                 with cols[j]:
-                    border_color = "#e0e0e0" if card["in_range"] else "#ffcdd2"
-                    opacity = "1" if card["in_range"] else "0.65"
-                    out_of_range_note = "" if card["in_range"] else '<div style="font-size:11px;color:#e53935;margin-top:4px;">Di luar rentang harga</div>'
+                    cls = "bundle-card" + (" out-range" if not card["in_range"] else "")
+                    warn = '<div class="card-warn">Di luar rentang harga</div>' if not card["in_range"] else ""
                     st.markdown(f"""
-                    <div class="bundle-card" style="border-color:{border_color}; opacity:{opacity};">
+                    <div class="{cls}">
                         <span class="badge {card['badge']}">{card['name']}</span>
-                        <div class="price-text">Rp {card['total']:,.0f}</div>
-                        <div style="font-size:11px; color:#888;">{len(card['parts'])} komponen</div>
-                        {out_of_range_note}
+                        <div class="card-price">Rp {card['total']:,.0f}</div>
+                        <div class="card-meta">{len(card['parts'])} komponen</div>
+                        {warn}
                     </div>
                     """, unsafe_allow_html=True)
-
                     if st.button("Pilih & Sesuaikan", key=f"btn_{btn_counter}", use_container_width=True):
                         st.session_state.selected_bundle = {
                             "name": f"{group['label']} — {card['name']}",
@@ -895,9 +1020,8 @@ if uploaded_file:
                         st.rerun()
                     btn_counter += 1
 
-            st.markdown("<hr style='border:none;border-top:1px solid #f0f0f0;margin:8px 0 4px 0;'>", unsafe_allow_html=True)
+            st.markdown("<hr class='mode-divider'>", unsafe_allow_html=True)
 
-        # Info produk yang diexclude
         with st.expander("Info Filter Produk Aktif"):
             st.markdown("""
             - **Processor**: Hanya Intel (AMD sebagai fallback)
@@ -915,7 +1039,6 @@ if uploaded_file:
     elif st.session_state.view == 'detail':
         bundle = st.session_state.selected_bundle
 
-        # Inisialisasi state untuk mode ganti
         if 'ganti_cat' not in st.session_state:
             st.session_state.ganti_cat = None
 
@@ -926,16 +1049,18 @@ if uploaded_file:
                 st.session_state.ganti_cat = None
                 st.rerun()
         with col_title:
-            st.subheader(bundle['name'])
-
-        st.divider()
-
-        col_parts, col_summary = st.columns([3, 1])
+            st.markdown(f"""
+            <div class="page-header">
+                <div class="page-title">{bundle['name']}</div>
+                <div class="page-subtitle">Klik Ganti untuk mengganti komponen · Klik — untuk menghapus</div>
+            </div>
+            """, unsafe_allow_html=True)
 
         display_order = ['Processor', 'Motherboard', 'Memory RAM', 'SSD Internal', 'VGA', 'Casing PC', 'Power Supply', 'CPU Cooler']
 
+        col_parts, col_summary = st.columns([3, 1], gap="medium")
+
         with col_parts:
-            st.markdown("#### Komponen Terpilih")
             updated_parts = {}
 
             for cat in display_order:
@@ -943,40 +1068,32 @@ if uploaded_file:
                     continue
                 item = bundle['parts'][cat]
 
-                # Baris komponen: info | tombol Ganti | tombol Hapus
-                c_info, c_ganti, c_hapus = st.columns([8, 1, 1])
+                c_info, c_ganti, c_hapus = st.columns([8, 1, 1], gap="small")
                 with c_info:
                     st.markdown(f"""
                     <div class="part-row">
-                        <div>
-                            <div class="category-label">{cat}</div>
-                            <div class="part-name">{item['Nama Accurate']}</div>
+                        <div class="part-left">
+                            <div class="cat-label">{cat}</div>
+                            <div class="part-name" title="{item['Nama Accurate']}">{item['Nama Accurate']}</div>
                         </div>
                         <div class="part-price">Rp {item['Web']:,.0f}</div>
                     </div>
                     """, unsafe_allow_html=True)
                 with c_ganti:
                     st.write("")
-                    if st.button("Ganti", key=f"ganti_{cat}", help=f"Ganti {cat}"):
-                        # Toggle: tutup jika klik kategori yang sama
-                        if st.session_state.ganti_cat == cat:
-                            st.session_state.ganti_cat = None
-                        else:
-                            st.session_state.ganti_cat = cat
+                    if st.button("Ganti", key=f"ganti_{cat}", help=f"Ganti {cat}", use_container_width=True):
+                        st.session_state.ganti_cat = None if st.session_state.ganti_cat == cat else cat
                         st.rerun()
                 with c_hapus:
                     st.write("")
-                    if not st.button("—", key=f"del_{cat}", help=f"Hapus {cat}"):
+                    if not st.button("—", key=f"del_{cat}", help=f"Hapus {cat}", use_container_width=True):
                         updated_parts[cat] = item
 
-                # Panel ganti produk — muncul di bawah baris jika kategori ini aktif
+                # Panel alternatif
                 if st.session_state.ganti_cat == cat:
                     available_all = data[(data[branch_col] > 0) & (data[cat_col] == True)].copy()
-                    alternatif = available_all[
-                        available_all['Kategori'] == cat
-                    ].sort_values('Web', ascending=True)
+                    alternatif = available_all[available_all['Kategori'] == cat].sort_values('Web', ascending=True)
 
-                    # Filter RAM sesuai DDR mobo saat ini
                     if cat == 'Memory RAM' and 'Motherboard' in bundle['parts']:
                         mobo_ddr = bundle['parts']['Motherboard'].get('mobo_ddr', None)
                         if mobo_ddr:
@@ -985,41 +1102,26 @@ if uploaded_file:
                                 alternatif = alt_ddr
 
                     if alternatif.empty:
-                        st.caption("Tidak ada produk lain tersedia untuk kategori ini.")
+                        st.caption("Tidak ada produk lain tersedia.")
                     else:
-                        st.markdown(f"""
-                        <div style="background:#f0f4ff; border:1px solid #c5d3f0; border-radius:10px;
-                                    padding:10px 14px; margin-bottom:8px;">
-                            <div style="font-size:12px; font-weight:700; color:#1565C0;">
-                                Pilih pengganti untuk {cat}
-                            </div>
-                        </div>
-                        """, unsafe_allow_html=True)
-
+                        st.markdown(f'<div class="alt-header">Pilih pengganti untuk {cat}</div>', unsafe_allow_html=True)
                         for _, alt_row in alternatif.iterrows():
                             is_current = alt_row['Nama Accurate'] == item['Nama Accurate']
-                            label = f"{'[Terpilih]  ' if is_current else ''}{alt_row['Nama Accurate']}  —  Rp {alt_row['Web']:,.0f}  |  Stok: {int(alt_row[branch_col])}"
+                            label = f"{'✓ ' if is_current else ''}{alt_row['Nama Accurate']}   Rp {alt_row['Web']:,.0f}  |  Stok: {int(alt_row[branch_col])}"
                             if st.button(label, key=f"pilih_{cat}_{alt_row.name}", disabled=is_current, use_container_width=True):
                                 alt_dict = alt_row.to_dict()
-
-                                # CASCADE: sesuaikan komponen lain jika perlu
                                 if cat == 'Processor':
-                                    # Ganti processor → rebuild semua
                                     new_parts = rebuild_from_processor(alt_dict, available_all, branch_col)
                                     if new_parts:
                                         st.session_state.selected_bundle['parts'] = new_parts
                                 elif cat == 'Motherboard':
-                                    # Ganti mobo → sesuaikan RAM
                                     new_parts = rebuild_from_mobo(alt_dict, bundle['parts'], available_all, branch_col)
                                     st.session_state.selected_bundle['parts'] = new_parts
                                 elif cat == 'Casing PC':
-                                    # Ganti casing → sesuaikan PSU
                                     new_parts = rebuild_from_casing(alt_dict, bundle['parts'], available_all, branch_col)
                                     st.session_state.selected_bundle['parts'] = new_parts
                                 else:
-                                    # SSD, RAM, VGA, PSU, CPU Cooler → ganti langsung, tidak cascade
                                     st.session_state.selected_bundle['parts'][cat] = alt_dict
-
                                 st.session_state.ganti_cat = None
                                 st.rerun()
 
@@ -1028,31 +1130,29 @@ if uploaded_file:
         with col_summary:
             total_items = sum(item['Web'] for item in updated_parts.values())
             is_assembled = st.checkbox(
-                f"Tambah Jasa Rakit",
+                "Tambah Jasa Rakit",
                 value=False,
                 help=f"Biaya jasa rakit {usage_label}: Rp {assembly_fee:,.0f}"
             )
             grand_total = total_items + (assembly_fee if is_assembled else 0)
 
-            # Bangun HTML di luar f-string agar tidak konflik tanda kutip
-            parts_html = ""
+            items_html = ""
             for item in updated_parts.values():
-                nama = item['Nama Accurate'][:30]
-                parts_html += f'<div style="font-size:12px; margin:3px 0; opacity:0.9;">• {nama}...</div>'
+                nama = item['Nama Accurate'][:32]
+                items_html += f'<div class="summary-item">• {nama}</div>'
             if is_assembled:
-                parts_html += f'<div style="font-size:12px; margin:3px 0; opacity:0.9;">• Jasa Rakit {usage_label}</div>'
+                items_html += f'<div class="summary-item">• Jasa Rakit {usage_label}</div>'
 
             summary_html = f"""
             <div class="summary-box">
-                <div style="font-size:13px; opacity:0.85; margin-bottom:6px;">RINGKASAN</div>
-                {parts_html}
-                <hr style="border-color: rgba(255,255,255,0.3); margin:10px 0;">
-                <div style="font-size:13px; opacity:0.85;">Total Harga</div>
-                <div class="total-price">Rp {grand_total:,.0f}</div>
+                <div class="summary-label">Ringkasan</div>
+                {items_html}
+                <hr class="summary-divider">
+                <div class="summary-total-label">Total Harga</div>
+                <div class="summary-total">Rp {grand_total:,.0f}</div>
             </div>
             """
             st.markdown(summary_html, unsafe_allow_html=True)
-
             st.write("")
             if st.button("Konfirmasi Bundling", use_container_width=True, type="primary"):
                 st.balloons()
