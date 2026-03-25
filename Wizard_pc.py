@@ -118,6 +118,15 @@ def extract_ram_gb(name):
     return 0
 
 
+def extract_ddr_type(name):
+    """Ekstrak tipe DDR dari nama produk (DDR3, DDR4, DDR5)."""
+    name = name.upper()
+    match = re.search(r'DDR(\d)', name)
+    if match:
+        return f"DDR{match.group(1)}"
+    return None
+
+
 def get_cpu_info(name):
     """Ekstrak info CPU: generasi Intel, socket AMD, tipe F, tipe Tray."""
     name = name.upper()
@@ -333,6 +342,8 @@ def process_data(df):
     df['cpu_is_f'] = False
     df['cpu_is_tray'] = False
     df['mobo_series'] = None
+    df['mobo_ddr'] = None   # Tipe DDR yang didukung motherboard
+    df['ram_ddr'] = None    # Tipe DDR RAM
 
     # --------------------------------------------------------
     # 1. PROCESSOR
@@ -398,6 +409,10 @@ def process_data(df):
             df.at[idx, 'cat_standar'] = True
             df.at[idx, 'cat_advance'] = True
 
+        # Ekstrak tipe DDR yang didukung motherboard
+        ddr = extract_ddr_type(name)
+        df.at[idx, 'mobo_ddr'] = ddr
+
     # --------------------------------------------------------
     # 3. RAM — Filter SODIMM & kapasitas
     # --------------------------------------------------------
@@ -411,6 +426,9 @@ def process_data(df):
     for idx in df[ram_mask].index:
         name = df.at[idx, 'Nama Accurate']
         gb = extract_ram_gb(name)
+        ddr = extract_ddr_type(name)
+        df.at[idx, 'ram_ddr'] = ddr
+
         if 8 <= gb <= 16:
             df.at[idx, 'cat_office'] = True
         if 16 <= gb <= 32:
@@ -565,8 +583,13 @@ def build_bundle(available, branch_col, mode, variant_idx):
         return None
     bundle['Motherboard'] = mobo
 
-    # 3. RAM
+    # 3. RAM — harus matching DDR dengan Motherboard
     rams = available[available['Kategori'] == 'Memory RAM']
+    mobo_ddr = mobo.get('mobo_ddr', None)
+    if mobo_ddr:
+        rams_compatible = rams[rams['ram_ddr'] == mobo_ddr]
+        if not rams_compatible.empty:
+            rams = rams_compatible
     ram = pick(rams)
     if ram is not None:
         bundle['Memory RAM'] = ram
@@ -607,6 +630,90 @@ def build_bundle(available, branch_col, mode, variant_idx):
 
     total = sum(item['Web'] for item in bundle.values())
     return {"parts": bundle, "total": total}
+
+
+def rebuild_from_processor(proc, available, branch_col):
+    """Rebuild seluruh bundle dari processor baru (cascade saat ganti Processor)."""
+    def pick_first(items):
+        return sorted_items(items, 'harga_termurah', branch_col).iloc[0] if not items.empty else None
+
+    bundle = {'Processor': proc}
+
+    mobos = available[available['Kategori'] == 'Motherboard']
+    cpu_info = {'brand': proc.get('cpu_brand','INTEL'), 'gen': proc.get('cpu_gen',None), 'socket': proc.get('cpu_socket',None)}
+    compatible = mobos[mobos['mobo_series'].apply(lambda s: is_mobo_compatible(cpu_info, s))]
+    mobo = pick_first(compatible)
+    if mobo is None:
+        return None
+    bundle['Motherboard'] = mobo
+
+    rams = available[available['Kategori'] == 'Memory RAM']
+    mobo_ddr = mobo.get('mobo_ddr', None)
+    if mobo_ddr:
+        rams_compat = rams[rams['ram_ddr'] == mobo_ddr]
+        if not rams_compat.empty:
+            rams = rams_compat
+    ram = pick_first(rams)
+    if ram is not None:
+        bundle['Memory RAM'] = ram
+
+    ssd = pick_first(available[available['Kategori'] == 'SSD Internal'])
+    if ssd is not None:
+        bundle['SSD Internal'] = ssd
+
+    if proc.get('need_vga', 0) == 1:
+        vga = pick_first(available[available['Kategori'] == 'VGA'])
+        if vga is not None:
+            bundle['VGA'] = vga
+
+    casing = pick_first(available[available['Kategori'] == 'Casing PC'])
+    if casing is not None:
+        bundle['Casing PC'] = casing
+
+    if not (casing is not None and casing.get('has_psu', 0) == 1):
+        psu = pick_first(available[available['Kategori'] == 'Power Supply'])
+        if psu is not None:
+            bundle['Power Supply'] = psu
+
+    if proc.get('need_cooler', 0) == 1:
+        cooler = pick_first(available[available['Kategori'] == 'CPU Cooler'])
+        if cooler is not None:
+            bundle['CPU Cooler'] = cooler
+
+    return bundle
+
+
+def rebuild_from_mobo(mobo, current_bundle, available, branch_col):
+    """Rebuild RAM saja saat Motherboard diganti (DDR bisa berubah)."""
+    bundle = dict(current_bundle)
+    bundle['Motherboard'] = mobo
+
+    rams = available[available['Kategori'] == 'Memory RAM']
+    mobo_ddr = mobo.get('mobo_ddr', None)
+    if mobo_ddr:
+        rams_compat = rams[rams['ram_ddr'] == mobo_ddr]
+        if not rams_compat.empty:
+            rams = rams_compat
+    if not rams.empty:
+        bundle['Memory RAM'] = rams.sort_values('Web').iloc[0]
+
+    return bundle
+
+
+def rebuild_from_casing(casing, current_bundle, available, branch_col):
+    """Update PSU saat Casing diganti (casing PSU/VALCAS tidak perlu PSU)."""
+    bundle = dict(current_bundle)
+    bundle['Casing PC'] = casing
+
+    if casing.get('has_psu', 0) == 1:
+        bundle.pop('Power Supply', None)
+    else:
+        if 'Power Supply' not in bundle:
+            psus = available[available['Kategori'] == 'Power Supply']
+            if not psus.empty:
+                bundle['Power Supply'] = psus.sort_values('Web').iloc[0]
+
+    return bundle
 
 
 def generate_bundles(df, branch_col, cat_col, price_min=0, price_max=0):
@@ -688,18 +795,23 @@ if uploaded_file:
     st.sidebar.header("Konfigurasi")
 
     branch_map = {
-        "ITC":         "Stock A - ITC",
-        "SBY":         "Stock B",
-        "C6":          "Stock C6",
-        "Semarang":    "Stock D - SMG",
-        "Jogja":       "Stock E - JOG",
-        "Malang":      "Stock F - MLG",
-        "Bali":        "Stock H - BALI",
-        "Surabaya (Y)":"Stock Y - SBY"
+        "Surabaya": ["Stock A - ITC", "Stock B", "Stock Y - SBY"],
+        "Jakarta":  ["Stock C6"],
+        "Semarang": ["Stock D - SMG"],
+        "Jogja":    ["Stock E - JOG"],
+        "Malang":   ["Stock F - MLG"],
+        "Bali":     ["Stock H - BALI"],
     }
 
-    selected_branch = st.sidebar.selectbox("Cabang", list(branch_map.keys()), index=1)  # Default SBY
-    branch_col = branch_map[selected_branch]
+    selected_branch = st.sidebar.selectbox("Cabang", list(branch_map.keys()), index=0)
+    branch_cols = branch_map[selected_branch]  # list of columns
+
+    # Buat kolom gabungan stok untuk cabang Surabaya (sum ITC+SBY+Y)
+    if selected_branch == "Surabaya":
+        data['_stock_branch'] = data[branch_cols].sum(axis=1)
+    else:
+        data['_stock_branch'] = data[branch_cols[0]]
+    branch_col = '_stock_branch'
 
     usage_options = {
         "Office":    "cat_office",
@@ -859,33 +971,57 @@ if uploaded_file:
 
                 # Panel ganti produk — muncul di bawah baris jika kategori ini aktif
                 if st.session_state.ganti_cat == cat:
-                    # Ambil semua produk kategori ini yang tersedia di cabang & kategori penggunaan
-                    alternatif = data[
-                        (data['Kategori'] == cat) &
-                        (data[branch_col] > 0) &
-                        (data[cat_col] == True)
+                    available_all = data[(data[branch_col] > 0) & (data[cat_col] == True)].copy()
+                    alternatif = available_all[
+                        available_all['Kategori'] == cat
                     ].sort_values('Web', ascending=True)
+
+                    # Filter RAM sesuai DDR mobo saat ini
+                    if cat == 'Memory RAM' and 'Motherboard' in bundle['parts']:
+                        mobo_ddr = bundle['parts']['Motherboard'].get('mobo_ddr', None)
+                        if mobo_ddr:
+                            alt_ddr = alternatif[alternatif['ram_ddr'] == mobo_ddr]
+                            if not alt_ddr.empty:
+                                alternatif = alt_ddr
 
                     if alternatif.empty:
                         st.caption("Tidak ada produk lain tersedia untuk kategori ini.")
                     else:
-                        with st.container():
-                            st.markdown(f"""
-                            <div style="background:#f0f4ff; border:1px solid #c5d3f0; border-radius:10px;
-                                        padding:12px 16px; margin-bottom:10px;">
-                                <div style="font-size:12px; font-weight:700; color:#1565C0; margin-bottom:8px;">
-                                    Pilih pengganti untuk {cat}
-                                </div>
+                        st.markdown(f"""
+                        <div style="background:#f0f4ff; border:1px solid #c5d3f0; border-radius:10px;
+                                    padding:10px 14px; margin-bottom:8px;">
+                            <div style="font-size:12px; font-weight:700; color:#1565C0;">
+                                Pilih pengganti untuk {cat}
                             </div>
-                            """, unsafe_allow_html=True)
+                        </div>
+                        """, unsafe_allow_html=True)
 
-                            for _, alt_row in alternatif.iterrows():
-                                is_current = alt_row['Nama Accurate'] == item['Nama Accurate']
-                                label = f"{'[Terpilih]  ' if is_current else ''}{alt_row['Nama Accurate']}  —  Rp {alt_row['Web']:,.0f}  |  Stok: {int(alt_row[branch_col])}"
-                                if st.button(label, key=f"pilih_{cat}_{alt_row.name}", disabled=is_current, use_container_width=True):
-                                    st.session_state.selected_bundle['parts'][cat] = alt_row.to_dict()
-                                    st.session_state.ganti_cat = None
-                                    st.rerun()
+                        for _, alt_row in alternatif.iterrows():
+                            is_current = alt_row['Nama Accurate'] == item['Nama Accurate']
+                            label = f"{'[Terpilih]  ' if is_current else ''}{alt_row['Nama Accurate']}  —  Rp {alt_row['Web']:,.0f}  |  Stok: {int(alt_row[branch_col])}"
+                            if st.button(label, key=f"pilih_{cat}_{alt_row.name}", disabled=is_current, use_container_width=True):
+                                alt_dict = alt_row.to_dict()
+
+                                # CASCADE: sesuaikan komponen lain jika perlu
+                                if cat == 'Processor':
+                                    # Ganti processor → rebuild semua
+                                    new_parts = rebuild_from_processor(alt_dict, available_all, branch_col)
+                                    if new_parts:
+                                        st.session_state.selected_bundle['parts'] = new_parts
+                                elif cat == 'Motherboard':
+                                    # Ganti mobo → sesuaikan RAM
+                                    new_parts = rebuild_from_mobo(alt_dict, bundle['parts'], available_all, branch_col)
+                                    st.session_state.selected_bundle['parts'] = new_parts
+                                elif cat == 'Casing PC':
+                                    # Ganti casing → sesuaikan PSU
+                                    new_parts = rebuild_from_casing(alt_dict, bundle['parts'], available_all, branch_col)
+                                    st.session_state.selected_bundle['parts'] = new_parts
+                                else:
+                                    # SSD, RAM, VGA, PSU, CPU Cooler → ganti langsung, tidak cascade
+                                    st.session_state.selected_bundle['parts'][cat] = alt_dict
+
+                                st.session_state.ganti_cat = None
+                                st.rerun()
 
             st.session_state.selected_bundle['parts'] = updated_parts
 
