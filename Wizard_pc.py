@@ -754,6 +754,35 @@ if uploaded_file:
         format_func=lambda x: {"Office":"Office (< 10 jt)","Standar":"Standar (10-20 jt)","Advance":"Advance (> 20 jt)"}[x]
     )
 
+    _info = {
+        "Office": (
+            "**Cocok untuk:** kerja harian, browsing, dokumen\n\n"
+            "- Rentang bundle: **Rp 0 – 10 juta**\n"
+            "- CPU: Intel i3/i5 Non-F (ada iGPU, tanpa VGA)\n"
+            "- RAM: 8–16 GB\n"
+            "- Jasa rakit: Rp 100.000\n\n"
+            "⚠️ Bundle di luar Rp 10 jt tetap tampil dengan tanda *di luar rentang*."
+        ),
+        "Standar": (
+            "**Cocok untuk:** gaming ringan, desain grafis, multitasking\n\n"
+            "- Rentang bundle: **Rp 10 – 20 juta**\n"
+            "- CPU: Intel i3/i5 tipe F + VGA mid-range\n"
+            "- RAM: 16–32 GB\n"
+            "- Jasa rakit: Rp 150.000\n\n"
+            "⚠️ Bundle di luar rentang tetap tampil dengan tanda *di luar rentang*."
+        ),
+        "Advance": (
+            "**Cocok untuk:** gaming berat, rendering, video editing\n\n"
+            "- Rentang bundle: **> Rp 20 juta**\n"
+            "- CPU: Intel i7/i9 tipe F atau Intel Ultra\n"
+            "- RAM: 32–64 GB · VGA high-end\n"
+            "- Jasa rakit: Rp 200.000\n\n"
+            "⚠️ Bundle di bawah Rp 20 jt tetap tampil dengan tanda *di luar rentang*."
+        ),
+    }
+    with st.sidebar.expander(f"ℹ️ Info kategori {usage_label}", expanded=False):
+        st.markdown(_info[usage_label])
+
     if st.session_state.prev_usage_label and st.session_state.prev_usage_label != usage_label:
         st.session_state.view = 'main'
         st.session_state.selected_bundle = None
