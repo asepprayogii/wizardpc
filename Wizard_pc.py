@@ -124,6 +124,106 @@ def get_vga_category(name):
     cats["standar"] = True; return cats
 
 
+def get_vga_psu_requirement(name):
+    """
+    Kembalikan LIST opsi PSU yang valid untuk VGA ini.
+    Setiap opsi adalah dict {min_watt, min_rating}.
+    PSU valid jika memenuhi SALAH SATU opsi (OR logic).
+
+    Aturan dari tabel Wizard PC:
+    - GT710, GT730, GT1030, GTX1650  : bebas
+    - RTX3050                        : 500W bronze ATAU 550W standard
+    - RTX3060                        : 550W standard
+    - RTX5050, RTX4060               : 550W standard ATAU 650W standard
+    - RTX5060 (non-TI)               : 650W bronze ATAU 650W gold
+    - RTX5060 TI                     : 650W gold ATAU 750W bronze
+    - RTX5070 (non-TI)               : 750W gold ATAU 850W gold
+    - RTX5070 TI                     : 850W gold ke atas
+    - RTX5080, RTX5090               : 1000W gold ke atas
+    """
+    name = name.upper()
+
+    # GT series — bebas, tidak ada syarat
+    if any(s in name for s in ["GT710","GT730","GT1030","GTX1650"]):
+        return []   # list kosong = tidak ada syarat
+
+    # RTX3050 → 500W bronze ATAU 550W standard
+    if "RTX3050" in name:
+        return [
+            {"min_watt": 500, "min_rating": "bronze"},
+            {"min_watt": 550, "min_rating": "standard"},
+        ]
+
+    # RTX3060 → 550W standard
+    if "RTX3060" in name:
+        return [{"min_watt": 550, "min_rating": "standard"}]
+
+    # RTX5050, RTX4060 → 550W ATAU 650W standard
+    if "RTX5050" in name or "RTX4060" in name:
+        return [
+            {"min_watt": 550, "min_rating": "standard"},
+            {"min_watt": 650, "min_rating": "standard"},
+        ]
+
+    # RTX5060 TI → 650W gold ATAU 750W bronze
+    if ("RTX5060" in name or "RTX 5060" in name) and "TI" in name:
+        return [
+            {"min_watt": 650, "min_rating": "gold"},
+            {"min_watt": 750, "min_rating": "bronze"},
+        ]
+
+    # RTX5060 (non-TI) → 650W bronze ATAU 650W gold
+    if ("RTX5060" in name or "RTX 5060" in name) and "TI" not in name:
+        return [
+            {"min_watt": 650, "min_rating": "bronze"},
+            {"min_watt": 650, "min_rating": "gold"},
+        ]
+
+    # RTX5070 TI → 850W gold ke atas
+    if ("RTX5070" in name or "RTX 5070" in name) and "TI" in name:
+        return [{"min_watt": 850, "min_rating": "gold"}]
+
+    # RTX5070 (non-TI) → 750W gold ATAU 850W gold
+    if ("RTX5070" in name or "RTX 5070" in name) and "TI" not in name:
+        return [
+            {"min_watt": 750, "min_rating": "gold"},
+            {"min_watt": 850, "min_rating": "gold"},
+        ]
+
+    # RTX5080 → 1000W gold
+    if "RTX5080" in name:
+        return [{"min_watt": 1000, "min_rating": "gold"}]
+
+    # RTX5090 → 1000W gold
+    if "RTX5090" in name:
+        return [{"min_watt": 1000, "min_rating": "gold"}]
+
+    return []   # VGA lain → bebas
+
+
+def psu_meets_vga_requirement(psu_watt, psu_rating, vga_options):
+    """
+    Cek apakah PSU memenuhi syarat VGA.
+    vga_options = list opsi dari get_vga_psu_requirement().
+    PSU lolos jika memenuhi SALAH SATU opsi (OR logic).
+    Rating hierarchy: standard < bronze < gold < platinum
+    """
+    if not vga_options:
+        return True   # tidak ada syarat → semua PSU lolos
+
+    rating_order = {"standard": 0, "bronze": 1, "gold": 2, "platinum": 3}
+    psu_r = rating_order.get(psu_rating, 0)
+
+    for opt in vga_options:
+        watt_ok   = psu_watt >= opt["min_watt"]
+        rating_ok = psu_r >= rating_order.get(opt["min_rating"], 0)
+        if watt_ok and rating_ok:
+            return True   # cukup salah satu opsi terpenuhi
+
+    return False
+
+
+
 # ============================================================
 # PROCESS DATA
 # ============================================================
@@ -190,21 +290,28 @@ def process_data(df):
         if 32 <= gb <= 64: df.at[idx,'cat_advance'] = True
         if gb == 0: df.at[idx,'cat_office'] = df.at[idx,'cat_standar'] = df.at[idx,'cat_advance'] = True
 
-    # SSD — exclude WDS120G2GOB
+    # SSD — exclude WDS120G2GOB dan WDS120G2G0B (O vs 0)
     sm = df['Kategori']=='SSD Internal'
-    df = df[~(sm & df['Nama Accurate'].str.upper().str.contains('WDS120G2GOB', na=False))].copy()
+    excl_ssd = (
+        df['Nama Accurate'].str.upper().str.contains('WDS120G2GOB', na=False) |
+        df['Nama Accurate'].str.upper().str.contains('WDS120G2G0B', na=False)
+    )
+    df = df[~(sm & excl_ssd)].copy()
     for idx in df[df['Kategori']=='SSD Internal'].index:
         name = df.at[idx,'Nama Accurate'].upper()
         df.at[idx,'cat_office'] = df.at[idx,'cat_standar'] = True
         if 'NVME' in name or 'M.2' in name or 'M2' in name:
             df.at[idx,'cat_advance'] = True
 
-    # VGA
+    # VGA — set kategori + metadata kebutuhan PSU
+    df['vga_psu_options'] = None   # list opsi PSU yang valid untuk VGA ini
     for idx in df[df['Kategori']=='VGA'].index:
         c = get_vga_category(df.at[idx,'Nama Accurate'])
         df.at[idx,'cat_office']  = c['office']
         df.at[idx,'cat_standar'] = c['standar']
         df.at[idx,'cat_advance'] = c['advance']
+        # Set list opsi PSU yang valid untuk VGA ini
+        df.at[idx,'vga_psu_options'] = get_vga_psu_requirement(df.at[idx,'Nama Accurate'])
 
     # Casing — exclude Armageddon, advance > 600rb
     cm = df['Kategori']=='Casing PC'
@@ -218,7 +325,9 @@ def process_data(df):
         if 'PSU' in name or 'VALCAS' in name:
             df.at[idx,'has_psu'] = 1
 
-    # PSU
+    # PSU — set kategori + metadata watt & rating
+    df['psu_watt']   = 0
+    df['psu_rating'] = ''
     for idx in df[df['Kategori']=='Power Supply'].index:
         price = df.at[idx,'Web']
         name  = df.at[idx,'Nama Accurate'].upper()
@@ -226,7 +335,22 @@ def process_data(df):
         if price >= 500_000: df.at[idx,'cat_standar'] = True
         if any(l in name for l in ['BRONZE','GOLD','PLATINUM']): df.at[idx,'cat_advance'] = True
 
-    # CPU Cooler
+        # Ekstrak watt dari nama PSU
+        import re as _re
+        wm = _re.search(r'(\d{3,4})\s*W', name)
+        df.at[idx,'psu_watt'] = int(wm.group(1)) if wm else 0
+
+        # Ekstrak rating
+        if 'PLATINUM' in name:   df.at[idx,'psu_rating'] = 'platinum'
+        elif 'GOLD' in name:     df.at[idx,'psu_rating'] = 'gold'
+        elif 'BRONZE' in name:   df.at[idx,'psu_rating'] = 'bronze'
+        else:                    df.at[idx,'psu_rating'] = 'standard' 
+
+    # CPU Cooler — exclude Windranger
+    cm_cooler = df['Kategori']=='CPU Cooler'
+    excl_cooler = df['Nama Accurate'].str.upper().str.contains('WINDRANGER', na=False)
+    df = df[~(cm_cooler & excl_cooler)].copy()
+
     for idx in df[df['Kategori']=='CPU Cooler'].index:
         price = df.at[idx,'Web']
         if price < 300_000:                df.at[idx,'cat_office']  = True
@@ -279,15 +403,28 @@ def build_bundle(available, branch_col, mode, variant_idx):
     ssd = pick(available[available['Kategori']=='SSD Internal'])
     if ssd is not None: bundle['SSD Internal'] = ssd
 
+    vga_psu_options = []   # list opsi PSU valid untuk VGA terpilih
     if proc.get('need_vga',0)==1:
         vga = pick(available[available['Kategori']=='VGA'])
-        if vga is not None: bundle['VGA'] = vga
+        if vga is not None:
+            bundle['VGA'] = vga
+            vga_psu_options = vga.get('vga_psu_options') or []
 
     casing = pick(available[available['Kategori']=='Casing PC'])
     if casing is not None: bundle['Casing PC'] = casing
 
     if not (casing is not None and casing.get('has_psu',0)==1):
-        psu = pick(available[available['Kategori']=='Power Supply'])
+        psus = available[available['Kategori']=='Power Supply'].copy()
+        # Filter PSU yang memenuhi SALAH SATU opsi syarat VGA (OR logic)
+        if vga_psu_options:
+            psus = psus[psus.apply(
+                lambda r: psu_meets_vga_requirement(
+                    int(r.get('psu_watt', 0)),
+                    str(r.get('psu_rating', 'standard')),
+                    vga_psu_options
+                ), axis=1
+            )]
+        psu = pick(psus)
         if psu is not None: bundle['Power Supply'] = psu
 
     if proc.get('need_cooler',0)==1:
