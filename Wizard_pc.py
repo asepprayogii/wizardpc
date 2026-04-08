@@ -129,87 +129,60 @@ def get_vga_psu_requirement(name):
     Kembalikan LIST opsi PSU yang valid untuk VGA ini.
     Setiap opsi adalah dict {min_watt, min_rating}.
     PSU valid jika memenuhi SALAH SATU opsi (OR logic).
-
-    Aturan dari tabel Wizard PC:
-    - GT710, GT730, GT1030, GTX1650  : bebas
-    - RTX3050                        : 500W bronze ATAU 550W standard
-    - RTX3060                        : 550W standard
-    - RTX5050, RTX4060               : 550W standard ATAU 650W standard
-    - RTX5060 (non-TI)               : 650W bronze ATAU 650W gold
-    - RTX5060 TI                     : 650W gold ATAU 750W bronze
-    - RTX5070 (non-TI)               : 750W gold ATAU 850W gold
-    - RTX5070 TI                     : 850W gold ke atas
-    - RTX5080, RTX5090               : 1000W gold ke atas
     """
     name = name.upper()
 
-    # GT series — bebas, tidak ada syarat
     if any(s in name for s in ["GT710","GT730","GT1030","GTX1650"]):
-        return []   # list kosong = tidak ada syarat
+        return []
 
-    # RTX3050 → 500W bronze ATAU 550W standard
     if "RTX3050" in name:
         return [
             {"min_watt": 500, "min_rating": "bronze"},
             {"min_watt": 550, "min_rating": "standard"},
         ]
 
-    # RTX3060 → 550W standard
     if "RTX3060" in name:
         return [{"min_watt": 550, "min_rating": "standard"}]
 
-    # RTX5050, RTX4060 → 550W ATAU 650W standard
     if "RTX5050" in name or "RTX4060" in name:
         return [
             {"min_watt": 550, "min_rating": "standard"},
             {"min_watt": 650, "min_rating": "standard"},
         ]
 
-    # RTX5060 TI → 650W gold ATAU 750W bronze
     if ("RTX5060" in name or "RTX 5060" in name) and "TI" in name:
         return [
             {"min_watt": 650, "min_rating": "gold"},
             {"min_watt": 750, "min_rating": "bronze"},
         ]
 
-    # RTX5060 (non-TI) → 650W bronze ATAU 650W gold
     if ("RTX5060" in name or "RTX 5060" in name) and "TI" not in name:
         return [
             {"min_watt": 650, "min_rating": "bronze"},
             {"min_watt": 650, "min_rating": "gold"},
         ]
 
-    # RTX5070 TI → 850W gold ke atas
     if ("RTX5070" in name or "RTX 5070" in name) and "TI" in name:
         return [{"min_watt": 850, "min_rating": "gold"}]
 
-    # RTX5070 (non-TI) → 750W gold ATAU 850W gold
     if ("RTX5070" in name or "RTX 5070" in name) and "TI" not in name:
         return [
             {"min_watt": 750, "min_rating": "gold"},
             {"min_watt": 850, "min_rating": "gold"},
         ]
 
-    # RTX5080 → 1000W gold
     if "RTX5080" in name:
         return [{"min_watt": 1000, "min_rating": "gold"}]
 
-    # RTX5090 → 1000W gold
     if "RTX5090" in name:
         return [{"min_watt": 1000, "min_rating": "gold"}]
 
-    return []   # VGA lain → bebas
+    return []
 
 
 def psu_meets_vga_requirement(psu_watt, psu_rating, vga_options):
-    """
-    Cek apakah PSU memenuhi syarat VGA.
-    vga_options = list opsi dari get_vga_psu_requirement().
-    PSU lolos jika memenuhi SALAH SATU opsi (OR logic).
-    Rating hierarchy: standard < bronze < gold < platinum
-    """
     if not vga_options:
-        return True   # tidak ada syarat → semua PSU lolos
+        return True
 
     rating_order = {"standard": 0, "bronze": 1, "gold": 2, "platinum": 3}
     psu_r = rating_order.get(psu_rating, 0)
@@ -218,7 +191,7 @@ def psu_meets_vga_requirement(psu_watt, psu_rating, vga_options):
         watt_ok   = psu_watt >= opt["min_watt"]
         rating_ok = psu_r >= rating_order.get(opt["min_rating"], 0)
         if watt_ok and rating_ok:
-            return True   # cukup salah satu opsi terpenuhi
+            return True
 
     return False
 
@@ -304,25 +277,40 @@ def process_data(df):
             df.at[idx,'cat_advance'] = True
 
     # VGA — set kategori + metadata kebutuhan PSU
-    df['vga_psu_options'] = None   # list opsi PSU yang valid untuk VGA ini
+    df['vga_psu_options'] = None
     for idx in df[df['Kategori']=='VGA'].index:
         c = get_vga_category(df.at[idx,'Nama Accurate'])
         df.at[idx,'cat_office']  = c['office']
         df.at[idx,'cat_standar'] = c['standar']
         df.at[idx,'cat_advance'] = c['advance']
-        # Set list opsi PSU yang valid untuk VGA ini
         df.at[idx,'vga_psu_options'] = get_vga_psu_requirement(df.at[idx,'Nama Accurate'])
 
-    # Casing — exclude Armageddon, advance > 600rb
+    # Casing — exclude Armageddon
+    # VALCAS dan OFFICE hanya untuk kategori Office
+    # Standar: harga 300rb - 600rb (casing biasa, tanpa VALCAS/OFFICE)
+    # Advance: harga > 600rb (casing biasa, tanpa VALCAS/OFFICE)
     cm = df['Kategori']=='Casing PC'
     df = df[~(cm & df['Nama Accurate'].str.upper().str.contains('ARMAGEDDON', na=False))].copy()
     for idx in df[df['Kategori']=='Casing PC'].index:
         name  = df.at[idx,'Nama Accurate'].upper()
         price = df.at[idx,'Web']
-        df.at[idx,'cat_office']  = True
-        df.at[idx,'cat_standar'] = True
-        df.at[idx,'cat_advance'] = price > 600_000
-        if 'PSU' in name or 'VALCAS' in name:
+        is_valcas = 'VALCAS' in name
+        is_psu    = 'PSU' in name
+        is_office = 'OFFICE' in name
+
+        if is_valcas or is_office:
+            # VALCAS dan nama mengandung OFFICE → khusus Office saja
+            df.at[idx,'cat_office']  = True
+            df.at[idx,'cat_standar'] = False
+            df.at[idx,'cat_advance'] = False
+        else:
+            # Casing biasa
+            df.at[idx,'cat_office']  = True
+            df.at[idx,'cat_standar'] = 300_000 <= price <= 600_000
+            df.at[idx,'cat_advance'] = price > 600_000
+
+        # Casing include PSU jika ada kata PSU atau VALCAS di nama
+        if is_psu or is_valcas:
             df.at[idx,'has_psu'] = 1
 
     # PSU — set kategori + metadata watt & rating
@@ -335,16 +323,14 @@ def process_data(df):
         if price >= 500_000: df.at[idx,'cat_standar'] = True
         if any(l in name for l in ['BRONZE','GOLD','PLATINUM']): df.at[idx,'cat_advance'] = True
 
-        # Ekstrak watt dari nama PSU
         import re as _re
         wm = _re.search(r'(\d{3,4})\s*W', name)
         df.at[idx,'psu_watt'] = int(wm.group(1)) if wm else 0
 
-        # Ekstrak rating
         if 'PLATINUM' in name:   df.at[idx,'psu_rating'] = 'platinum'
         elif 'GOLD' in name:     df.at[idx,'psu_rating'] = 'gold'
         elif 'BRONZE' in name:   df.at[idx,'psu_rating'] = 'bronze'
-        else:                    df.at[idx,'psu_rating'] = 'standard' 
+        else:                    df.at[idx,'psu_rating'] = 'standard'
 
     # CPU Cooler — exclude Windranger
     cm_cooler = df['Kategori']=='CPU Cooler'
@@ -403,7 +389,7 @@ def build_bundle(available, branch_col, mode, variant_idx):
     ssd = pick(available[available['Kategori']=='SSD Internal'])
     if ssd is not None: bundle['SSD Internal'] = ssd
 
-    vga_psu_options = []   # list opsi PSU valid untuk VGA terpilih
+    vga_psu_options = []
     if proc.get('need_vga',0)==1:
         vga = pick(available[available['Kategori']=='VGA'])
         if vga is not None:
@@ -415,7 +401,6 @@ def build_bundle(available, branch_col, mode, variant_idx):
 
     if not (casing is not None and casing.get('has_psu',0)==1):
         psus = available[available['Kategori']=='Power Supply'].copy()
-        # Filter PSU yang memenuhi SALAH SATU opsi syarat VGA (OR logic)
         if vga_psu_options:
             psus = psus[psus.apply(
                 lambda r: psu_meets_vga_requirement(
@@ -553,11 +538,6 @@ def chat_start():
     )
 
 def build_best_bundle_for_budget(cat_col, branch, budget):
-    """
-    Generate semua variasi bundle (3 mode x 3 variant = 9),
-    lalu kembalikan yang totalnya paling mendekati budget dari bawah.
-    Jika semua melebihi budget, kembalikan yang paling murah.
-    """
     df_raw = st.session_state.get("processed_data", None)
     if df_raw is None:
         return None, None
@@ -577,11 +557,6 @@ def build_best_bundle_for_budget(cat_col, branch, budget):
     if not candidates:
         return None, None
 
-    # Pisah: dalam budget vs melebihi budget
-    within  = [b for b in candidates if b["total"] <= budget]
-    over    = [b for b in candidates if b["total"] >  budget]
-
-    # Duplikat bisa ada — ambil unik berdasarkan total
     seen = set()
     unique = []
     for b in candidates:
@@ -594,10 +569,8 @@ def build_best_bundle_for_budget(cat_col, branch, budget):
     over   = [b for b in unique if b["total"] >  budget]
 
     if within:
-        # Paling mendekati budget dari bawah
         best = max(within, key=lambda b: b["total"])
     else:
-        # Semua melebihi — pilih yang paling murah
         best = min(over, key=lambda b: b["total"])
 
     return best, available
@@ -607,7 +580,6 @@ def chat_process(choice):
     step = st.session_state.chat_step
     chat_add("user", choice)
 
-    # ── STEP 1: Pilih kategori ──────────────────────────────
     if step == 1:
         if "Office" in choice:
             st.session_state.chat_data.update({"kategori": "Office", "cat_col": "cat_office"})
@@ -624,7 +596,6 @@ def chat_process(choice):
         )
         st.session_state.chat_step = 2
 
-    # ── STEP 2: Input budget ────────────────────────────────
     elif step == 2:
         try:
             budget = int(re.sub(r"[^\d]", "", choice))
@@ -640,7 +611,6 @@ def chat_process(choice):
                 input_type="number"
             )
 
-    # ── STEP 3: Pilih cabang → langsung generate ────────────
     elif step == 3:
         branch = next((b for b in BRANCH_MAP if b in choice), "Surabaya")
         st.session_state.chat_data["branch"] = branch
@@ -684,7 +654,6 @@ def chat_process(choice):
         )
         st.session_state.chat_step = 4
 
-    # ── STEP 4: Aksi setelah hasil ──────────────────────────
     elif step == 4:
         if "Lihat Detail" in choice:
             b  = st.session_state.chat_result_bundle
@@ -702,25 +671,17 @@ def chat_process(choice):
 
 
 # ============================================================
-# CHAT UI RENDERER — proper chat bubble style
+# CHAT UI RENDERER
 # ============================================================
 
 def render_chat():
-    """
-    Chat bubble kiri (agent) / kanan (user) menggunakan
-    st.components.v1.html agar HTML+CSS bisa render penuh
-    tanpa disanitasi Streamlit. Interaksi (tombol, input)
-    tetap pakai widget Streamlit native di luar iframe.
-    """
     import streamlit.components.v1 as components
 
     msgs = st.session_state.chat_messages
 
-    # ── Bangun HTML seluruh percakapan ───────────────────
     bubbles_html = ""
     for msg in msgs:
         txt = msg["text"]
-        # Konversi markdown sederhana → HTML
         txt = re.sub(r"\*\*(.+?)\*\*", r"<strong>\1</strong>", txt)
         txt = txt.replace("\n", "<br>")
 
@@ -755,8 +716,6 @@ def render_chat():
 <style>
   * {{ box-sizing:border-box; margin:0; padding:0; }}
   body {{ font-family:'Segoe UI',sans-serif; background:#f0f4fb; }}
-
-  /* ── Header ── */
   .header {{
     background:linear-gradient(135deg,#0d47a1,#1976D2);
     padding:12px 18px;
@@ -770,8 +729,6 @@ def render_chat():
   }}
   .header .nm  {{ color:#fff;font-weight:700;font-size:14px; }}
   .header .sub {{ color:rgba(255,255,255,.72);font-size:11px;margin-top:1px; }}
-
-  /* ── Scroll area ── */
   .msgs {{
     padding:14px 14px 10px;
     overflow-y:auto;
@@ -779,8 +736,6 @@ def render_chat():
     max-height:360px;
     background:#f0f4fb;
   }}
-
-  /* ── Footer hint ── */
   .footer {{
     background:#fff;border-top:1px solid #e2e8f6;
     padding:8px 16px;border-radius:0 0 14px 14px;
@@ -791,7 +746,6 @@ def render_chat():
 <body>
 <div style="border:1.5px solid #dde8ff;border-radius:14px;
             box-shadow:0 6px 24px rgba(21,101,192,.14);overflow:hidden;">
-
   <div class="header">
     <div class="av">🤖</div>
     <div>
@@ -799,28 +753,22 @@ def render_chat():
       <div class="sub">Asisten Rekomendasi Bundling PC</div>
     </div>
   </div>
-
   <div class="msgs" id="chatbox">
     {bubbles_html if bubbles_html else
      '<div style="text-align:center;padding:40px 0;color:#aaa;font-size:13px;">Mulai percakapan...</div>'}
   </div>
-
   <div class="footer">💡 Pilih salah satu opsi di bawah untuk melanjutkan</div>
 </div>
-
 <script>
-  // Auto-scroll ke bawah setiap load
   var cb = document.getElementById("chatbox");
   if(cb) cb.scrollTop = cb.scrollHeight;
 </script>
 </body>
 </html>"""
 
-    # Hitung tinggi dinamis: ~60px per pesan, min 340, max 560
     height = min(max(340, len(msgs) * 62 + 120), 560)
     components.html(full_html, height=height, scrolling=False)
 
-    # ── Interaksi: tombol + input (di luar iframe) ───────
     last_agent = next((m for m in reversed(msgs) if m["role"] == "agent"), None)
     if last_agent:
         choices    = last_agent.get("choices", [])
@@ -938,7 +886,6 @@ if uploaded_file:
     # ── MAIN VIEW ─────────────────────────────────────────
     if st.session_state.view == 'main':
 
-        # ── CHAT PANEL (collapsible, di atas bundling) ────
         st.markdown("---")
         col_lbl, col_toggle = st.columns([5,1])
         with col_lbl:
@@ -1007,7 +954,10 @@ if uploaded_file:
             - **Processor**: Hanya Intel (AMD tidak digunakan)
             - **RAM**: SODIMM dihapus
             - **SSD**: WDS120G2GOB dihapus
-            - **Casing**: Armageddon dihapus; Advance hanya > Rp 600.000
+            - **Casing**: Armageddon dihapus
+            - **Casing Office**: Semua casing + VALCAS + nama mengandung OFFICE
+            - **Casing Standar**: Harga Rp 300.000 – 600.000 (tanpa VALCAS/OFFICE)
+            - **Casing Advance**: Harga > Rp 600.000 (tanpa VALCAS/OFFICE)
             - **VGA**: Muncul hanya jika Processor tipe F
             - **PSU**: Dihapus jika Casing include PSU/VALCAS
             - **CPU Cooler**: Muncul hanya jika Processor Tray
